@@ -10,7 +10,7 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 
-  <!-- jsPDF + autotable (cached by SW after first load) -->
+  <!-- jsPDF + autotable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
@@ -35,7 +35,7 @@
       font-family:var(--font);
       overflow:auto;
     }
-    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
     .top{
       display:flex;gap:14px;align-items:center;justify-content:space-between;
       margin-bottom:14px;flex-wrap:wrap
@@ -56,7 +56,7 @@
       box-shadow:0 20px 70px rgba(0,0,0,.55);
     }
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+    @media (max-width:980px){ .grid{grid-template-columns:1fr} }
     label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:.4px}
     input,textarea,select{
       width:100%;
@@ -122,11 +122,13 @@
       background:rgba(255,255,255,.04);
     }
     .hr{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
+    .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:980px){ .miniGrid{grid-template-columns:1fr} }
   </style>
 </head>
 
 <body>
-  <!-- Install prompt bar (Android/desktop Chrome). iOS uses Share → Add to Home Screen -->
+  <!-- Install prompt bar -->
   <div id="pwa-install-bar" style="display:none;position:sticky;top:0;z-index:99999;background:rgba(0,0,0,.65);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 14px;">
     <button id="btn-install" style="cursor:pointer;width:100%;padding:12px 14px;border-radius:14px;border:0;background:#ff671f;color:#000;font-weight:900;letter-spacing:.6px;text-transform:uppercase;">
       Install Decide Creator Tool
@@ -135,34 +137,44 @@
 
   <div class="wrap">
     <div class="top">
-      <div class="badge"><span class="dot"></span> DECIDE CREATOR TOOL <span class="mono" style="opacity:.7">PWA</span></div>
+      <div class="badge"><span class="dot"></span> DECIDE CREATOR TOOL <span class="mono" style="opacity:.7">GOLD+VISUAL</span></div>
       <div class="kpi">
         <span id="sidKpi">SID: —</span>
-        <span id="modeKpi">Mode: GOLD</span>
         <span id="lenKpi">Text: —</span>
+        <span id="healthKpi">Script: —</span>
       </div>
     </div>
 
     <div class="panel">
       <div class="grid">
         <div>
-          <label>Topic (used for titles + script framing)</label>
+          <label>Topic</label>
           <input id="topic" placeholder="e.g. Overthinking decisions" />
         </div>
-        <div class="row">
-          <div style="flex:1;min-width:220px">
-            <label>Brand / Watermark</label>
+
+        <div class="miniGrid">
+          <div>
+            <label>Brand / Watermark (PDF)</label>
             <input id="watermark" value="DECIDE.ENGINE • INTERNAL • DO NOT REUPLOAD" />
           </div>
-          <div style="flex:1;min-width:220px">
-            <label>YouTube Channel Name (text only)</label>
+          <div>
+            <label>Channel Name (text only)</label>
             <input id="channelName" value="decide.engine" />
           </div>
-          <div style="flex:1;min-width:220px">
+          <div>
             <label>Default Playlist Label</label>
             <select id="playlist">
               <option value="problems">Problems</option>
               <option value="solutions">Solutions</option>
+            </select>
+          </div>
+          <div>
+            <label>Visual Style Preset</label>
+            <select id="visualPreset">
+              <option value="studio">Dark Studio (default)</option>
+              <option value="noir">Noir (hard shadows)</option>
+              <option value="neon">Neon Edge (subtle glow)</option>
+              <option value="minimal">Minimal (flat, clean)</option>
             </select>
           </div>
         </div>
@@ -183,6 +195,8 @@
       <div class="row">
         <button class="btn primary" id="gen">Generate</button>
         <button class="btn good" id="copyAll">Copy YouTube Pack (Both)</button>
+        <button class="btn" id="copyVisualProblem">Copy Visual Prompts (Problem)</button>
+        <button class="btn" id="copyVisualSolution">Copy Visual Prompts (Solution)</button>
         <button class="btn warn" id="pdfProblem">PDF: Problem</button>
         <button class="btn warn" id="pdfSolution">PDF: Solution</button>
         <button class="btn warn" id="pdfCombined">PDF: Combined</button>
@@ -191,7 +205,7 @@
       </div>
 
       <div class="small" style="margin-top:10px">
-        Runs locally. Autosaves drafts. Works offline after first load.
+        Output includes: Script + Visual prompts + Editor checklist. Autosaves drafts. Offline after first load.
       </div>
     </div>
 
@@ -214,6 +228,22 @@
 
       <div class="panel">
         <div class="row" style="justify-content:space-between;align-items:center">
+          <div style="font-weight:900;letter-spacing:.6px">VISUAL PROMPTS — PROBLEM</div>
+          <button class="btn" id="copyVisualProblem2">Copy</button>
+        </div>
+        <div class="out" id="visualProblem">(generate to view)</div>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div style="font-weight:900;letter-spacing:.6px">VISUAL PROMPTS — SOLUTION</div>
+          <button class="btn" id="copyVisualSolution2">Copy</button>
+        </div>
+        <div class="out" id="visualSolution">(generate to view)</div>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:center">
           <div style="font-weight:900;letter-spacing:.6px">YOUTUBE PACK — PROBLEM (A/B)</div>
           <button class="btn" id="copyYTProblem">Copy</button>
         </div>
@@ -227,6 +257,14 @@
         </div>
         <div class="out" id="ytSolution">(generate to view)</div>
       </div>
+
+      <div class="panel" style="grid-column:1 / -1">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div style="font-weight:900;letter-spacing:.6px">EDITOR CHECKLIST (what to do with PDF script)</div>
+          <button class="btn" id="copyChecklist">Copy</button>
+        </div>
+        <div class="out" id="checklist">(generate to view)</div>
+      </div>
     </div>
   </div>
 
@@ -234,17 +272,15 @@
 
 <script>
 /* =========================
-   PWA INSTALL PROMPT
+   PWA INSTALL + SW
 ========================= */
 let deferredPrompt = null;
-
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
   const bar = document.getElementById("pwa-install-bar");
   if (bar) bar.style.display = "block";
 });
-
 document.addEventListener("click", async (e) => {
   if (e.target && e.target.id === "btn-install") {
     if (!deferredPrompt) return;
@@ -255,26 +291,10 @@ document.addEventListener("click", async (e) => {
     if (bar) bar.style.display = "none";
   }
 });
-
-/* =========================
-   SERVICE WORKER REGISTER
-========================= */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
-    try {
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      reg.addEventListener("updatefound", () => {
-        const sw = reg.installing;
-        if (!sw) return;
-        sw.addEventListener("statechange", () => {
-          if (sw.state === "installed" && navigator.serviceWorker.controller) {
-            console.log("New version available (refresh to update).");
-          }
-        });
-      });
-    } catch (e) {
-      console.warn("SW register failed", e);
-    }
+    try { await navigator.serviceWorker.register("/sw.js"); }
+    catch (e) { console.warn("SW register failed", e); }
   });
 }
 </script>
@@ -293,9 +313,7 @@ const toast = (m) => {
 const SID = "SID-" + Math.random().toString(36).slice(2,6).toUpperCase();
 $("sidKpi").textContent = "SID: " + SID;
 
-function escapeTxt(s){ return String(s ?? "").trim(); }
 function nowISO(){ return new Date().toISOString(); }
-function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
 function wordCount(s){
   const m = String(s||"").trim().match(/\S+/g);
   return m ? m.length : 0;
@@ -304,225 +322,267 @@ async function copy(text){
   try{ await navigator.clipboard.writeText(text); toast("COPIED"); }
   catch{ prompt("Copy:", text); }
 }
-
-function splitSentences(text){
-  const clean = String(text||"").replace(/\s+/g," ").trim();
-  if(!clean) return [];
-  return clean.split(/(?<=[.!?])\s+/).map(s=>s.trim()).filter(s=>s.length>10);
+function cleanText(s){
+  return String(s||"")
+    .replace(/\r/g,"")
+    .replace(/[ \t]+\n/g,"\n")
+    .replace(/\n{3,}/g,"\n\n")
+    .trim();
 }
-function keyPoints(text, max=8){
-  const s = splitSentences(text);
-  if(!s.length) return [];
-  const score = (x)=>{
-    let v=0;
-    v += clamp(x.length/45,0,6);
-    if(/\b(but|however|because|therefore|so|yet|instead)\b/i.test(x)) v+=2;
-    if(/\b(study|data|evidence|research|shows|proved)\b/i.test(x)) v+=1.5;
-    if(/\d/.test(x)) v+=1;
-    if(/[,:;]/.test(x)) v+=0.5;
-    return v;
-  };
-  return s.map(x=>({x,sc:score(x)})).sort((a,b)=>b.sc-a.sc).slice(0,max).map(o=>o.x);
-}
-function pick(arr, seed){
-  if(!arr.length) return "";
-  const n = Math.abs(hash(seed)) % arr.length;
-  return arr[n];
-}
-function hash(str){
-  let h=0;
-  for(let i=0;i<str.length;i++) h = (h<<5)-h + str.charCodeAt(i) | 0;
-  return h;
+function lines(text){
+  return cleanText(text).split("\n").map(x=>x.trim()).filter(Boolean);
 }
 
 /* =========================
-   GOLD SCRIPT GENERATOR
+   SAFE KEYPOINTS (prevents corruption)
 ========================= */
-const VISUAL_PROMPT = "Dark studio. White kinetic typography. Slow push-in. No stock footage. Minimalist cinematic.";
+function keyPointsSafe(text, max=8){
+  const arr = lines(text);
+  if (!arr.length) return [];
+  // Prefer short lines/bullets; fallback to sentence-like fragments
+  const candidates = arr
+    .map(x => x.replace(/^[-*•]\s*/,""))
+    .filter(x => x.length >= 18 && x.length <= 140);
+
+  const uniq = [];
+  const seen = new Set();
+  for(const c of candidates){
+    const k = c.toLowerCase();
+    if(seen.has(k)) continue;
+    seen.add(k);
+    uniq.push(c);
+    if(uniq.length >= max) break;
+  }
+
+  // fallback
+  if(!uniq.length){
+    return [arr.slice(0, max).join(" ").slice(0,140)];
+  }
+  return uniq;
+}
+
+/* =========================
+   GOLD SCRIPT (clean, structured)
+========================= */
+const SCENE_META = [
+  { purpose:"Hook", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
+  { purpose:"Define the Problem", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 },
+  { purpose:"Escalate Stakes", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
+  { purpose:"Break the Illusion", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 },
+  { purpose:"Introduce Solution", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
+  { purpose:"Explain Mechanism", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 },
+  { purpose:"Simplify", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
+  { purpose:"Empower", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 },
+  { purpose:"Reframe", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
+  { purpose:"Identity Shift", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 }
+];
+
 const TYPO_RULES = [
-  "Words in CAPS = full-screen emphasis",
-  "Words in [brackets] = slight delay appearance",
-  "Single-word lines = isolated center frame",
-  "\"…\" = 0.5 second pause"
+  "CAPS = full screen emphasis",
+  "[brackets] = slight delay appearance",
+  "Single-word line = isolated center",
+  "\"…\" = 0.5s pause"
 ];
 
-const SCENE_PLAN = [
-  { purpose:"Hook", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Define the Problem", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Escalate Stakes", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Break the Illusion", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Introduce Solution", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Explain Mechanism", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Simplify", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Empower", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Reframe", curve:"Low → Build → Peak → Drop" },
-  { purpose:"Identity Shift", curve:"Low → Build → Peak → Drop" },
-];
-const DUR = [18,45,18,45,18,45,18,45,18,45];
-
-function punch(theme, seed){
-  const options = [
-    `${theme.toUpperCase()}. Not tomorrow.`,
-    "You already know.",
-    "This is the trap.",
-    "That’s the real cost.",
-    "Most people never notice.",
-    "It feels safe. It isn’t.",
-    "Comfort is expensive.",
-    "Clarity is a decision.",
-    "Stop waiting for certainty.",
-    "Choose. Then refine.",
+function hookLine(topic, mode){
+  const t = topic || "this";
+  const hooksP = [
+    `You think you’re being careful…`,
+    `But ${t} isn’t careful.`,
+    `It’s quiet damage.`,
+    `This is why you feel stuck…`
   ];
-  return pick(options, seed);
-}
-function rehook(i, topic){
-  const hooks = [
-    "Here’s the part nobody tells you…",
-    "If this feels personal, good.",
-    "In 10 seconds, you'll see it.",
-    "Now watch what happens next…",
-    `This changes how you see ${topic}.`,
-    "One question will expose it…",
-    "Most people get this backwards…",
+  const hooksS = [
+    `You don’t need more willpower…`,
+    `You need a repeatable move.`,
+    `Here’s the system for ${t}.`,
+    `No hype. Just control.`
   ];
-  return hooks[(Math.floor(i/2)) % hooks.length];
+  return (mode==="problem" ? hooksP : hooksS);
 }
 
-function buildSceneText({topic, modeLabel, i, kps, isSlow}){
-  const theme = (topic.split(/\s+/)[0] || "THIS");
-  const seed = `${SID}-${modeLabel}-${i}-${topic}`;
+function punchLine(mode){
+  return mode==="problem"
+    ? ["Stop waiting for certainty.","This is the trap.","Delay is a decision.","Comfort is expensive."]
+    : ["Small wins compound.","Choose. Then refine.","Systems beat moods.","Do it once. Repeat."];
+}
 
+function buildSceneScript({mode, topic, kp, idx}){
+  const isSlow = (idx % 2 === 0);
+  const hooks = hookLine(topic, mode);
+  const punch = punchLine(mode);
+
+  // Slow scenes: short, cinematic, clean typography behavior
   if(isSlow){
+    const h = hooks[idx % hooks.length];
+    const p = punch[idx % punch.length];
     return [
-      `[Look closely]…`,
-      rehook(i, topic),
-      `This is the ${modeLabel.toUpperCase()}.`,
-      `Not the story…`,
-      `The MECHANISM.`,
+      `${h}`,
+      `…`,
+      `You don’t need more information.`,
+      `You need`,
       `CONTROL.`,
-      punch(theme, seed)
+      `…`,
+      `${p}`
     ].join("\n");
   }
 
-  const kp = kps[i % Math.max(1,kps.length)] || "";
-  const kp2 = kps[(i+1) % Math.max(1,kps.length)] || "";
-
-  const opener = modeLabel === "problem"
-    ? `You don’t lose because you’re wrong. You lose because you hesitate.`
-    : `You don’t need motivation. You need a system that survives bad days.`;
-
-  const middle = modeLabel === "problem"
+  // Dynamic scenes: structured narrative, not random
+  const base = mode==="problem"
     ? [
-      `You think you're being careful…`,
-      `But delay is a hidden decision.`,
-      `Every time you wait…`,
-      `your brain calls it “research”.`,
-      `But it’s really [avoidance].`,
+      `Every time you delay a decision…`,
+      `your brain calls it “being responsible”.`,
+      `But delay is protection.`,
+      `Protection from regret.`,
+      `Protection from responsibility.`,
       ``,
-      `Here’s what it costs:`,
-      `Momentum.`,
-      `Identity.`,
-      `And trust in yourself.`,
+      `And it has a price:`,
+      `Momentum dies quietly.`,
+      `Confidence leaks.`,
+      `Identity stays unfinished.`,
     ]
     : [
-      `Here’s the shift:`,
-      `Stop trying to feel ready.`,
-      `Start trying to get feedback.`,
+      `Here’s the method:`,
+      `Make the smallest decision that creates feedback.`,
+      `Then adjust.`,
       ``,
-      `Make the smallest decision you can…`,
-      `then iterate.`,
-      `That’s how certainty is built.`,
-      `Not found.`,
+      `Don’t aim for certainty.`,
+      `Aim for evidence.`,
+      `Evidence creates confidence.`,
+      `Confidence creates speed.`,
     ];
 
-  const quote = kp ? `“${kp}”` : (modeLabel==="problem" ? "Certainty does not exist." : "Progress is proof.");
-  const reminder = kp2 ? `And remember: ${kp2}` : (modeLabel==="problem" ? "More options can mean less action." : "Small wins compound.");
+  const insert = kp ? [
+    ``,
+    `Truth check:`,
+    `“${kp}”`
+  ] : [];
 
-  const punchline = punch(theme, seed);
+  const rehook = idx % 2 === 1 ? `Now watch this…` : `Here’s the twist…`;
+  const p = punch[(idx + 1) % punch.length];
 
   return [
-    rehook(i, topic),
+    rehook,
     ``,
-    opener,
+    ...base,
+    ...insert,
     ``,
-    ...middle,
-    ``,
-    quote,
-    ``,
-    reminder,
-    ``,
-    punchline
+    p
   ].join("\n");
 }
 
-function buildGold({topic, modeLabel, sourceText}){
-  const kps = keyPoints(sourceText, 8);
-  const scenes = Array.from({length:10}).map((_,idx)=>{
-    const scene = idx+1;
-    const isSlow = scene % 2 === 1;
-    const pace = isSlow ? 2 : 220 + (idx % 41);
+function buildGold({topic, mode, sourceText}){
+  const kps = keyPointsSafe(sourceText, 8);
+  const scenes = SCENE_META.map((m, idx) => {
     return {
-      scene,
-      duration_s: DUR[idx],
-      voice_pace_wpm: pace,
-      purpose: SCENE_PLAN[idx].purpose,
-      energy_curve: SCENE_PLAN[idx].curve,
-      visual_prompt: VISUAL_PROMPT,
+      scene: idx+1,
+      duration_s: m.duration,
+      voice_pace: m.pace,
+      energy_curve: m.curve,
+      purpose: m.purpose,
       typography_notes: TYPO_RULES,
-      script: buildSceneText({topic, modeLabel, i:idx, kps, isSlow})
+      script: buildSceneScript({mode, topic, kp: kps[idx % Math.max(1,kps.length)], idx})
     };
   });
 
-  return {
-    topic,
-    mode: modeLabel,
-    created_at: nowISO(),
-    style: { visual: VISUAL_PROMPT, tone: "Intelligent, calm, psychologically sharp, cinematic" },
-    rules: { slow_wpm:2, dense_wpm_range:[220,260], rehook_every_n_scenes:2, punchline_max_words:6 },
-    scenes
-  };
+  // Health check (basic)
+  const all = scenes.map(s=>s.script).join("\n");
+  const hasWeird = /undefined|null|\[object Object\]/i.test(all) || all.length < 200;
+  $("healthKpi").textContent = hasWeird ? "Script: ⚠" : "Script: ✅";
+
+  return { topic, mode, created_at: nowISO(), scenes };
 }
 
 function goldToText(g){
   const header = [
     `TOPIC: ${g.topic}`,
     `MODE: ${g.mode.toUpperCase()}`,
-    `STYLE: ${g.style.visual}`,
-    `TONE: ${g.style.tone}`,
     ``,
-    `STRUCTURE RULES:`,
-    `- 10 scenes`,
-    `- Alternate slow (2 WPM) and dense (220–260 WPM)`,
-    `- Every scene includes Purpose + Energy Curve + Typography notes`,
-    `- Every dense scene includes a punchline under 6 words`,
-    `- Re-hook every 2 scenes`,
+    `STYLE: Dark studio • White kinetic typography • Slow push-in • No stock footage`,
+    `TYPOGRAPHY: ${TYPO_RULES.join(" | ")}`,
     ``,
   ].join("\n");
 
-  const body = g.scenes.map(s=>{
-    return [
-      `SCENE ${s.scene}`,
-      `Duration: ${s.duration_s}s`,
-      `Voice Pace: ${s.voice_pace_wpm} WPM`,
-      `Energy Curve: ${s.energy_curve}`,
-      `Purpose: ${s.purpose}`,
-      `VISUAL PROMPT: ${s.visual_prompt}`,
-      `TYPOGRAPHY NOTES:`,
-      ...s.typography_notes.map(x=>`- ${x}`),
-      ``,
-      `SCRIPT:`,
-      s.script,
-      ``,
-      `---`,
-      ``
-    ].join("\n");
-  }).join("\n");
+  const body = g.scenes.map(s => ([
+    `SCENE ${s.scene}`,
+    `Duration: ${s.duration_s}s`,
+    `Voice Pace: ${s.voice_pace}`,
+    `Energy Curve: ${s.energy_curve}`,
+    `Purpose: ${s.purpose}`,
+    `TYPO NOTES: ${s.typography_notes.join(" | ")}`,
+    ``,
+    `SCRIPT:`,
+    s.script,
+    ``,
+    `---`,
+    ``
+  ].join("\n"))).join("\n");
 
   return header + body;
 }
 
 /* =========================
-   YOUTUBE PACK GENERATOR (no technical terms)
+   VISUAL PROMPT GENERATOR (per-scene)
+========================= */
+function visualPresetText(preset){
+  switch(preset){
+    case "noir":
+      return "Noir studio, hard shadows, high contrast, tight rim light, monochrome feel.";
+    case "neon":
+      return "Dark studio with subtle neon edge glow, soft haze, gentle bloom, cinematic contrast.";
+    case "minimal":
+      return "Minimal studio, flat clean lighting, no bloom, crisp text edges, calm framing.";
+    default:
+      return "Dark studio, soft rim light, cinematic contrast, subtle grain, slow push-in.";
+  }
+}
+
+function visualForScene({topic, mode, scene, purpose, isSlow, preset}){
+  const base = visualPresetText(preset);
+  const cam = isSlow ? "Slow push-in 2–4% zoom" : "Micro push + subtle handheld drift (very low)";
+  const typ = isSlow
+    ? "Typography: 1–2 words at a time, big center, long holds, heavy pauses"
+    : "Typography: kinetic emphasis on CAPS words, phrase-by-phrase reveals, 2–3 key punch words isolated";
+  const pace = isSlow ? "Timing: 0.8–1.2s between words" : "Timing: 0.15–0.35s per phrase with 1–2 pattern interrupts";
+  const sfx = isSlow ? "SFX: deep room tone, sub bass swell, soft hit on CAPS" : "SFX: light risers, click accents, bass hit on punchline";
+
+  const modeTag = mode === "problem" ? "Tension / trap" : "Clarity / control";
+  return [
+    `SCENE ${scene} — ${purpose}`,
+    `Mood: ${modeTag}`,
+    `Look: ${base}`,
+    `Camera: ${cam}`,
+    `${typ}`,
+    `${pace}`,
+    `${sfx}`,
+    `On-screen: reference topic = "${topic}"`
+  ].join("\n");
+}
+
+function buildVisualPack(gold, preset){
+  const blocks = gold.scenes.map((s, idx)=>{
+    const isSlow = (idx % 2 === 0);
+    return visualForScene({
+      topic: gold.topic,
+      mode: gold.mode,
+      scene: s.scene,
+      purpose: s.purpose,
+      isSlow,
+      preset
+    });
+  });
+  return [
+    `VISUAL PROMPT PACK`,
+    `TOPIC: ${gold.topic}`,
+    `MODE: ${gold.mode.toUpperCase()}`,
+    `PRESET: ${preset.toUpperCase()}`,
+    ``,
+    blocks.join("\n\n---\n\n")
+  ].join("\n");
+}
+
+/* =========================
+   YOUTUBE PACK (no technical terms)
 ========================= */
 function ytTitleVariants(topic, kind){
   const A = kind==="problem"
@@ -544,7 +604,7 @@ function ytDescription(topic, kind){
       ``,
       `👇 Comment one sentence: what you’re stuck on right now.`,
       ``,
-      `#decisions #mindset #focus`
+      `#decide #focus #mindset`
     ]
     : [
       `This is the solution video for ${topic}.`,
@@ -555,7 +615,7 @@ function ytDescription(topic, kind){
       ``,
       `👇 Comment: “DONE” after you apply it.`,
       ``,
-      `#habits #focus #selfimprovement`
+      `#decide #habits #focus`
     ];
   return base.join("\n");
 }
@@ -581,7 +641,6 @@ function youtubePackText(topic, kind){
   const titles = ytTitleVariants(topic, kind);
   const pins = ytPinnedComment(topic, kind);
   const comm = ytCommunityPost(topic, kind);
-
   return [
     `TYPE: ${kind.toUpperCase()}`,
     ``,
@@ -598,41 +657,54 @@ function youtubePackText(topic, kind){
     comm.A,
     ``,
     `COMMUNITY POST B:`,
-    comm.B,
+    comm.B
   ].join("\n");
 }
 
 /* =========================
-   PDF EXPORT (Watermark)
+   EDITOR CHECKLIST (PDF script usage)
 ========================= */
-function pdfWatermark(doc, text){
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
-  doc.saveGraphicsState?.();
-  doc.setTextColor(255,103,31);
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(34);
-  try{ doc.setGState?.(new doc.GState({opacity:0.08})); }catch{}
-  doc.text(text, w/2, h/2, {align:"center", angle:35});
-  doc.restoreGraphicsState?.();
+function buildChecklist(topic){
+  return [
+    `EDITOR CHECKLIST — ${topic}`,
+    ``,
+    `1) Use the GOLD SCRIPT as the voiceover track.`,
+    `2) Follow VISUAL PROMPT PACK scene-by-scene.`,
+    `3) Typography rules:`,
+    `   - CAPS words go full-screen`,
+    `   - [brackets] appear slightly delayed`,
+    `   - single-word lines hold longer`,
+    `   - "…" adds a 0.5 second pause`,
+    `4) Add pattern interrupts every 30–45s (small zoom/shift/beat).`,
+    `5) Keep background clean: dark studio only, no stock footage.`,
+    `6) Add subtle room tone + bass hits on punchlines.`,
+    `7) Export 2 thumbnails: one “Problem”, one “Solution”.`,
+    `8) Upload with Title A first; A/B test with Title B after 24h.`,
+    `9) Pin comment A first; swap to B if engagement drops.`,
+    `10) Community post: publish A at upload time, B the next day.`,
+  ].join("\n");
 }
+
+/* =========================
+   PDF EXPORT (includes script + visuals + checklist)
+========================= */
 function paintBg(doc){
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   doc.setFillColor(5,5,5);
   doc.rect(0,0,w,h,"F");
 }
-function addFooter(doc, brand, sid, pageNum, total){
+function pdfWatermark(doc, text){
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(9);
-  doc.setTextColor(170);
-  doc.text(`${brand} • ${sid}`, 44, h-18);
-  doc.text(`Page ${pageNum}/${total}`, w-44, h-18, {align:"right"});
+  try{ doc.setGState?.(new doc.GState({opacity:0.08})); }catch{}
+  doc.setTextColor(255,103,31);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(34);
+  doc.text(text, w/2, h/2, {align:"center", angle:35});
 }
-function writeWrapped(doc, text, x, y, maxW, lineH=14, font="courier"){
-  doc.setFont(font,"normal");
+function writeWrapped(doc, text, x, y, maxW, lineH=12){
+  doc.setFont("courier","normal");
   const lines = doc.splitTextToSize(String(text||""), maxW);
   for(const line of lines){
     const h = doc.internal.pageSize.getHeight();
@@ -646,15 +718,23 @@ function writeWrapped(doc, text, x, y, maxW, lineH=14, font="courier"){
   }
   return y;
 }
+function addFooter(doc, brand, sid, pageNum, total){
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(9);
+  doc.setTextColor(170);
+  doc.text(`${brand} • ${sid}`, 44, h-18);
+  doc.text(`Page ${pageNum}/${total}`, w-44, h-18, {align:"right"});
+}
 
-function exportGoldPdf({topic, kind, gold, ytPack, watermarkText}){
+function exportPackagePdf({topic, kind, gold, visualPack, ytPack, checklist, watermarkText}){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({unit:"pt", format:"a4"});
   const w = doc.internal.pageSize.getWidth();
   const margin = 44;
 
-  paintBg(doc);
-  pdfWatermark(doc, watermarkText);
+  paintBg(doc); pdfWatermark(doc, watermarkText);
   doc.setTextColor(255,103,31);
   doc.setFont("helvetica","bold");
   doc.setFontSize(22);
@@ -671,35 +751,37 @@ function exportGoldPdf({topic, kind, gold, ytPack, watermarkText}){
   doc.text(`Session: ${SID}`, margin, 146);
   doc.text(`Generated: ${nowISO()}`, margin, 162);
 
-  doc.addPage();
-  paintBg(doc);
-  pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(14);
-  doc.setTextColor(255,255,255);
+  // GOLD
+  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
   doc.text(`GOLD SCRIPT — ${kind.toUpperCase()}`, margin, 60);
-
-  doc.setFont("courier","normal");
-  doc.setFontSize(10);
-  doc.setTextColor(220);
-
+  doc.setFontSize(10); doc.setTextColor(220);
   let y = 86;
-  y = writeWrapped(doc, goldToText(gold), margin, y, w - margin*2, 12, "courier");
+  y = writeWrapped(doc, goldToText(gold), margin, y, w - margin*2, 12);
 
-  doc.addPage();
-  paintBg(doc);
-  pdfWatermark(doc, watermarkText);
+  // VISUAL
+  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
+  doc.text(`VISUAL PROMPT PACK — ${kind.toUpperCase()}`, margin, 60);
+  doc.setFontSize(10); doc.setTextColor(220);
+  y = 86;
+  y = writeWrapped(doc, visualPack, margin, y, w - margin*2, 12);
 
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(14);
-  doc.setTextColor(255,255,255);
+  // YT
+  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
   doc.text(`YOUTUBE PACK — ${kind.toUpperCase()} (A/B)`, margin, 60);
-
-  doc.setFont("courier","normal");
-  doc.setFontSize(10);
-  doc.setTextColor(220);
+  doc.setFontSize(10); doc.setTextColor(220);
   y = 86;
-  y = writeWrapped(doc, ytPack, margin, y, w - margin*2, 12, "courier");
+  y = writeWrapped(doc, ytPack, margin, y, w - margin*2, 12);
+
+  // CHECKLIST
+  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
+  doc.text(`EDITOR CHECKLIST`, margin, 60);
+  doc.setFontSize(10); doc.setTextColor(220);
+  y = 86;
+  y = writeWrapped(doc, checklist, margin, y, w - margin*2, 12);
 
   const total = doc.getNumberOfPages();
   for(let p=1;p<=total;p++){
@@ -707,202 +789,163 @@ function exportGoldPdf({topic, kind, gold, ytPack, watermarkText}){
     addFooter(doc, "DECIDE CREATOR TOOL", SID, p, total);
   }
 
-  doc.save(`${topic.replace(/\s+/g,"_")}_${kind}_SCRIPT_PACKAGE.pdf`);
-}
-
-function exportCombinedPdf({topic, goldProblem, goldSolution, ytProblem, ytSolution, watermarkText}){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:"pt", format:"a4"});
-  const w = doc.internal.pageSize.getWidth();
-  const margin = 44;
-
-  paintBg(doc);
-  pdfWatermark(doc, watermarkText);
-  doc.setTextColor(255,103,31);
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(22);
-  doc.text("COMBINED SCRIPT PACKAGE", margin, 64);
-
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(16);
-  doc.text(topic, margin, 108);
-
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(10);
-  doc.setTextColor(180);
-  doc.text(`Session: ${SID}`, margin, 130);
-  doc.text(`Generated: ${nowISO()}`, margin, 146);
-
-  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
-  doc.text("GOLD SCRIPT — PROBLEM", margin, 60);
-  doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(220);
-  let y = 86;
-  y = writeWrapped(doc, goldToText(goldProblem), margin, y, w - margin*2, 12, "courier");
-
-  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
-  doc.text("GOLD SCRIPT — SOLUTION", margin, 60);
-  doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(220);
-  y = 86;
-  y = writeWrapped(doc, goldToText(goldSolution), margin, y, w - margin*2, 12, "courier");
-
-  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
-  doc.text("YOUTUBE PACK — PROBLEM (A/B)", margin, 60);
-  doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(220);
-  y = 86;
-  y = writeWrapped(doc, ytProblem, margin, y, w - margin*2, 12, "courier");
-
-  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
-  doc.text("YOUTUBE PACK — SOLUTION (A/B)", margin, 60);
-  doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(220);
-  y = 86;
-  y = writeWrapped(doc, ytSolution, margin, y, w - margin*2, 12, "courier");
-
-  const total = doc.getNumberOfPages();
-  for(let p=1;p<=total;p++){
-    doc.setPage(p);
-    addFooter(doc, "DECIDE CREATOR TOOL", SID, p, total);
-  }
-
-  doc.save(`${topic.replace(/\s+/g,"_")}_COMBINED_SCRIPT_PACKAGE.pdf`);
+  doc.save(`${topic.replace(/\s+/g,"_")}_${kind}_PACKAGE.pdf`);
 }
 
 /* =========================
-   MAIN ACTIONS
+   STATE + GENERATE
 ========================= */
 let LAST = {
-  goldProblem:null, goldSolution:null,
-  ytProblem:"", ytSolution:""
+  topic:"",
+  watermark:"",
+  goldProblem:null,
+  goldSolution:null,
+  visualProblem:"",
+  visualSolution:"",
+  ytProblem:"",
+  ytSolution:"",
+  checklist:""
 };
 
 function generate(){
-  const topic = escapeTxt($("topic").value) || "Untitled Topic";
-  const wm = escapeTxt($("watermark").value) || "DECIDE.ENGINE • INTERNAL";
-  const p = escapeTxt($("problem").value);
-  const s = escapeTxt($("solution").value);
+  const topic = cleanText($("topic").value) || "Untitled Topic";
+  const wm = cleanText($("watermark").value) || "DECIDE.ENGINE • INTERNAL";
+  const p = cleanText($("problem").value);
+  const s = cleanText($("solution").value);
+  const preset = $("visualPreset").value;
 
-  if(!p && !s){
-    toast("Paste problem/solution text");
-    return;
-  }
+  if(!p && !s){ toast("Paste problem/solution text"); return; }
 
-  const combinedLen = wordCount(p) + wordCount(s);
-  $("lenKpi").textContent = `Text: ${combinedLen} words`;
+  $("lenKpi").textContent = `Text: ${wordCount(p)+wordCount(s)} words`;
 
-  const goldProblem = buildGold({topic, modeLabel:"problem", sourceText: p || topic});
-  const goldSolution = buildGold({topic, modeLabel:"solution", sourceText: s || topic});
+  const goldProblem = buildGold({topic, mode:"problem", sourceText: p || topic});
+  const goldSolution = buildGold({topic, mode:"solution", sourceText: s || topic});
+
+  const vp = buildVisualPack(goldProblem, preset);
+  const vs = buildVisualPack(goldSolution, preset);
 
   const ytP = youtubePackText(topic, "problem");
   const ytS = youtubePackText(topic, "solution");
+  const cl = buildChecklist(topic);
 
-  LAST.goldProblem = goldProblem;
-  LAST.goldSolution = goldSolution;
-  LAST.ytProblem = ytP;
-  LAST.ytSolution = ytS;
-  LAST.watermark = wm;
-  LAST.topic = topic;
+  LAST = {
+    topic, watermark: wm,
+    goldProblem, goldSolution,
+    visualProblem: vp,
+    visualSolution: vs,
+    ytProblem: ytP,
+    ytSolution: ytS,
+    checklist: cl
+  };
 
   $("outProblem").textContent = goldToText(goldProblem);
   $("outSolution").textContent = goldToText(goldSolution);
+  $("visualProblem").textContent = vp;
+  $("visualSolution").textContent = vs;
   $("ytProblem").textContent = ytP;
   $("ytSolution").textContent = ytS;
+  $("checklist").textContent = cl;
 
   toast("Generated ✅");
-  saveDraft(); // autosave on generate
+  saveDraft();
 }
 
 $("gen").onclick = generate;
 
+/* =========================
+   COPY BUTTONS
+========================= */
 $("copyAll").onclick = async ()=>{
   if(!LAST.goldProblem) return toast("Generate first");
-  const blob = [
+  await copy([
     `TOPIC: ${LAST.topic}`,
     `SID: ${SID}`,
     ``,
-    `============================`,
-    `YOUTUBE PACK — PROBLEM (A/B)`,
-    `============================`,
+    `=== YOUTUBE PACK — PROBLEM ===`,
     LAST.ytProblem,
     ``,
-    `============================`,
-    `YOUTUBE PACK — SOLUTION (A/B)`,
-    `============================`,
+    `=== YOUTUBE PACK — SOLUTION ===`,
     LAST.ytSolution
-  ].join("\n");
-  await copy(blob);
+  ].join("\n"));
 };
 
-$("copyScriptProblem").onclick = async ()=> {
-  if(!LAST.goldProblem) return toast("Generate first");
-  await copy(goldToText(LAST.goldProblem));
-};
-$("copyScriptSolution").onclick = async ()=> {
-  if(!LAST.goldSolution) return toast("Generate first");
-  await copy(goldToText(LAST.goldSolution));
-};
-$("copyYTProblem").onclick = async ()=> {
-  if(!LAST.ytProblem) return toast("Generate first");
-  await copy(LAST.ytProblem);
-};
-$("copyYTSolution").onclick = async ()=> {
-  if(!LAST.ytSolution) return toast("Generate first");
-  await copy(LAST.ytSolution);
-};
+$("copyScriptProblem").onclick = async ()=> LAST.goldProblem ? copy(goldToText(LAST.goldProblem)) : toast("Generate first");
+$("copyScriptSolution").onclick = async ()=> LAST.goldSolution ? copy(goldToText(LAST.goldSolution)) : toast("Generate first");
+$("copyYTProblem").onclick = async ()=> LAST.ytProblem ? copy(LAST.ytProblem) : toast("Generate first");
+$("copyYTSolution").onclick = async ()=> LAST.ytSolution ? copy(LAST.ytSolution) : toast("Generate first");
 
+function copyVisualProblem(){ return LAST.visualProblem ? copy(LAST.visualProblem) : toast("Generate first"); }
+function copyVisualSolution(){ return LAST.visualSolution ? copy(LAST.visualSolution) : toast("Generate first"); }
+
+$("copyVisualProblem").onclick = copyVisualProblem;
+$("copyVisualProblem2").onclick = copyVisualProblem;
+$("copyVisualSolution").onclick = copyVisualSolution;
+$("copyVisualSolution2").onclick = copyVisualSolution;
+
+$("copyChecklist").onclick = async ()=> LAST.checklist ? copy(LAST.checklist) : toast("Generate first");
+
+/* =========================
+   PDF BUTTONS
+========================= */
 $("pdfProblem").onclick = ()=>{
   if(!LAST.goldProblem) return toast("Generate first");
-  exportGoldPdf({
+  exportPackagePdf({
     topic: LAST.topic,
     kind: "problem",
     gold: LAST.goldProblem,
+    visualPack: LAST.visualProblem,
     ytPack: LAST.ytProblem,
-    watermarkText: LAST.watermark
-  });
-};
-$("pdfSolution").onclick = ()=>{
-  if(!LAST.goldSolution) return toast("Generate first");
-  exportGoldPdf({
-    topic: LAST.topic,
-    kind: "solution",
-    gold: LAST.goldSolution,
-    ytPack: LAST.ytSolution,
-    watermarkText: LAST.watermark
-  });
-};
-$("pdfCombined").onclick = ()=>{
-  if(!LAST.goldProblem) return toast("Generate first");
-  exportCombinedPdf({
-    topic: LAST.topic,
-    goldProblem: LAST.goldProblem,
-    goldSolution: LAST.goldSolution,
-    ytProblem: LAST.ytProblem,
-    ytSolution: LAST.ytSolution,
+    checklist: LAST.checklist,
     watermarkText: LAST.watermark
   });
 };
 
+$("pdfSolution").onclick = ()=>{
+  if(!LAST.goldSolution) return toast("Generate first");
+  exportPackagePdf({
+    topic: LAST.topic,
+    kind: "solution",
+    gold: LAST.goldSolution,
+    visualPack: LAST.visualSolution,
+    ytPack: LAST.ytSolution,
+    checklist: LAST.checklist,
+    watermarkText: LAST.watermark
+  });
+};
+
+$("pdfCombined").onclick = ()=>{
+  if(!LAST.goldProblem) return toast("Generate first");
+  // Combined = export two packages quickly (simple + reliable)
+  $("pdfProblem").click();
+  setTimeout(()=> $("pdfSolution").click(), 350);
+};
+
+/* =========================
+   RESET
+========================= */
 $("reset").onclick = ()=>{
   $("topic").value="";
   $("problem").value="";
   $("solution").value="";
   $("outProblem").textContent="(generate to view)";
   $("outSolution").textContent="(generate to view)";
+  $("visualProblem").textContent="(generate to view)";
+  $("visualSolution").textContent="(generate to view)";
   $("ytProblem").textContent="(generate to view)";
   $("ytSolution").textContent="(generate to view)";
-  LAST = { goldProblem:null, goldSolution:null, ytProblem:"", ytSolution:"" };
+  $("checklist").textContent="(generate to view)";
+  LAST = { topic:"", watermark:"", goldProblem:null, goldSolution:null, visualProblem:"", visualSolution:"", ytProblem:"", ytSolution:"", checklist:"" };
   $("lenKpi").textContent="Text: —";
+  $("healthKpi").textContent="Script: —";
   toast("Reset");
   saveDraft();
 };
 
 /* =========================
-   AUTOSAVE (localStorage)
+   AUTOSAVE
 ========================= */
-const STORAGE_KEY = "decide_creator_tool_v1";
-const AUTOSAVE_FIELDS = ["topic","watermark","channelName","playlist","problem","solution"];
+const STORAGE_KEY = "decide_creator_tool_v2_gold_visual";
+const AUTOSAVE_FIELDS = ["topic","watermark","channelName","playlist","visualPreset","problem","solution"];
 
 function readField(id) {
   const el = document.getElementById(id);
@@ -916,7 +959,6 @@ function writeField(id, val) {
   if (el.tagName === "SELECT") el.value = val ?? "";
   else el.value = val ?? "";
 }
-
 function loadSavedDraft() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -928,37 +970,34 @@ function loadSavedDraft() {
     console.warn("Draft restore failed", e);
   }
 }
-
 let saveTimer = null;
 function scheduleSaveDraft() {
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveDraft, 350);
+  saveTimer = setTimeout(saveDraft, 300);
 }
-
 function saveDraft() {
   try {
     const payload = { updated_at: new Date().toISOString() };
     AUTOSAVE_FIELDS.forEach((k) => (payload[k] = readField(k)));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch (e) {
-    console.warn("Draft save failed", e);
-  }
+  } catch (e) { console.warn("Draft save failed", e); }
 }
-
 function clearDraft() {
   localStorage.removeItem(STORAGE_KEY);
   AUTOSAVE_FIELDS.forEach((k) => writeField(k, ""));
-  ["outProblem","outSolution","ytProblem","ytSolution"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = "(generate to view)";
-  });
-  LAST = { goldProblem:null, goldSolution:null, ytProblem:"", ytSolution:"" };
-  const lenKpi = document.getElementById("lenKpi");
-  if (lenKpi) lenKpi.textContent = "Text: —";
+  $("outProblem").textContent="(generate to view)";
+  $("outSolution").textContent="(generate to view)";
+  $("visualProblem").textContent="(generate to view)";
+  $("visualSolution").textContent="(generate to view)";
+  $("ytProblem").textContent="(generate to view)";
+  $("ytSolution").textContent="(generate to view)";
+  $("checklist").textContent="(generate to view)";
+  LAST = { topic:"", watermark:"", goldProblem:null, goldSolution:null, visualProblem:"", visualSolution:"", ytProblem:"", ytSolution:"", checklist:"" };
+  $("lenKpi").textContent="Text: —";
+  $("healthKpi").textContent="Script: —";
   toast("Saved draft cleared");
   saveDraft();
 }
-
 function initAutosave() {
   AUTOSAVE_FIELDS.forEach((id) => {
     const el = document.getElementById(id);
@@ -966,21 +1005,17 @@ function initAutosave() {
     el.addEventListener("input", scheduleSaveDraft);
     el.addEventListener("change", scheduleSaveDraft);
   });
-
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") saveDraft();
   });
-
   const btn = document.getElementById("clearSaved");
   if (btn) btn.addEventListener("click", clearDraft);
-
   saveDraft();
 }
-
 window.addEventListener("load", () => {
   loadSavedDraft();
   initAutosave();
 });
 </script>
 </body>
-</html>
+            </html>
