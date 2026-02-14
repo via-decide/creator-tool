@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Decide Creator Tool</title>
+
+  <!-- PWA -->
+  <meta name="theme-color" content="#050505" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <!-- jsPDF + autotable (cached by SW after first load) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#050505;
+      --panel:rgba(20,20,20,.94);
+      --border:rgba(255,255,255,.10);
+      --text:#fff;
+      --muted:rgba(255,255,255,.65);
+      --accent:#ff671f;
+      --good:#00e676;
+      --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 900px at 40% 10%, #111 0%, var(--bg) 60%);
+      color:var(--text);
+      font-family:var(--font);
+      overflow:auto;
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    .top{
+      display:flex;gap:14px;align-items:center;justify-content:space-between;
+      margin-bottom:14px;flex-wrap:wrap
+    }
+    .badge{
+      display:inline-flex;align-items:center;gap:10px;
+      padding:10px 14px;border-radius:14px;
+      border:1px solid rgba(255,103,31,.22);
+      background:rgba(255,103,31,.08);
+      font-weight:900;letter-spacing:.8px
+    }
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 12px rgba(0,230,118,.7)}
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:16px;
+      box-shadow:0 20px 70px rgba(0,0,0,.55);
+    }
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:.4px}
+    input,textarea,select{
+      width:100%;
+      background:rgba(0,0,0,.35);
+      border:1px solid var(--border);
+      border-radius:14px;
+      color:#fff;
+      padding:12px 12px;
+      font-size:14px;
+      outline:none;
+    }
+    textarea{min-height:190px;resize:vertical;line-height:1.5}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      cursor:pointer;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:#fff;
+      font-weight:900;
+      letter-spacing:.6px;
+      text-transform:uppercase;
+      user-select:none;
+    }
+    .btn:active{transform:scale(.985);opacity:.92}
+    .btn.primary{background:var(--accent);border:none;color:#000}
+    .btn.good{background:rgba(0,230,118,.16);border-color:rgba(0,230,118,.35);color:var(--good)}
+    .btn.warn{background:rgba(255,255,255,.05);border-color:rgba(255,103,31,.25);color:var(--accent)}
+    .small{font-size:12px;color:var(--muted)}
+    .mono{font-family:var(--mono)}
+    .out{
+      background:rgba(0,0,0,.38);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      padding:14px;
+      overflow:auto;
+      max-height:460px;
+      white-space:pre-wrap;
+      line-height:1.45;
+      font-family:var(--mono);
+      font-size:12.5px;
+    }
+    .toast{
+      position:fixed;left:50%;bottom:20px;transform:translateX(-50%);
+      background:rgba(10,10,10,.92);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      padding:12px 16px;
+      color:var(--good);
+      font-family:var(--mono);
+      font-size:12px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s, transform .18s;
+      z-index:99999;
+    }
+    .toast.on{opacity:1;transform:translateX(-50%) translateY(-10px)}
+    .kpi{display:flex;gap:12px;flex-wrap:wrap}
+    .kpi span{
+      font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.7);
+      padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.04);
+    }
+    .hr{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
+  </style>
+</head>
+
+<body>
+  <!-- Install prompt bar (Android/desktop Chrome). iOS uses Share → Add to Home Screen -->
+  <div id="pwa-install-bar" style="display:none;position:sticky;top:0;z-index:99999;background:rgba(0,0,0,.65);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 14px;">
+    <button id="btn-install" style="cursor:pointer;width:100%;padding:12px 14px;border-radius:14px;border:0;background:#ff671f;color:#000;font-weight:900;letter-spacing:.6px;text-transform:uppercase;">
+      Install Decide Creator Tool
+    </button>
+  </div>
+
+  <div class="wrap">
+    <div class="top">
+      <div class="badge"><span class="dot"></span> DECIDE CREATOR TOOL <span class="mono" style="opacity:.7">PWA</span></div>
+      <div class="kpi">
+        <span id="sidKpi">SID: —</span>
+        <span id="modeKpi">Mode: GOLD</span>
+        <span id="lenKpi">Text: —</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="grid">
+        <div>
+          <label>Topic (used for titles + script framing)</label>
+          <input id="topic" placeholder="e.g. Overthinking decisions" />
+        </div>
+        <div class="row">
+          <div style="flex:1;min-width:220px">
+            <label>Brand / Watermark</label>
+            <input id="watermark" value="DECIDE.ENGINE • INTERNAL • DO NOT REUPLOAD" />
+          </div>
+          <div style="flex:1;min-width:220px">
+            <label>YouTube Channel Name (text only)</label>
+            <input id="channelName" value="decide.engine" />
+          </div>
+          <div style="flex:1;min-width:220px">
+            <label>Default Playlist Label</label>
+            <select id="playlist">
+              <option value="problems">Problems</option>
+              <option value="solutions">Solutions</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label>Problem input (your notes)</label>
+          <textarea id="problem" placeholder="Paste problem research / story / bullets..."></textarea>
+        </div>
+
+        <div>
+          <label>Solution input (your notes)</label>
+          <textarea id="solution" placeholder="Paste solution framework / steps / payoff..."></textarea>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <button class="btn primary" id="gen">Generate</button>
+        <button class="btn good" id="copyAll">Copy YouTube Pack (Both)</button>
+        <button class="btn warn" id="pdfProblem">PDF: Problem</button>
+        <button class="btn warn" id="pdfSolution">PDF: Solution</button>
+        <button class="btn warn" id="pdfCombined">PDF: Combined</button>
+        <button class="btn" id="reset">Reset</button>
+        <button class="btn" id="clearSaved">Clear Saved</button>
+      </div>
+
+      <div class="small" style="margin-top:10px">
+        Runs locally. Autosaves drafts. Works offline after first load.
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div style="font-weight:900;letter-spacing:.6px">GOLD SCRIPT — PROBLEM</div>
+          <button class="btn" id="copyScriptProblem">Copy</button>
+        </div>
+        <div class="out" id="outProblem">(generate to view)</div>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div style="font-weight:900;letter-spacing:.6px">GOLD SCRIPT — SOLUTION</div>
+          <button class="btn" id="copyScriptSolution">Copy</button>
+        </div>
+        <div class="out" id="outSolution">(generate to view)</div>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div style="font-weight:900;letter-spacing:.6px">YOUTUBE PACK — PROBLEM (A/B)</div>
+          <button class="btn" id="copyYTProblem">Copy</button>
+        </div>
+        <div class="out" id="ytProblem">(generate to view)</div>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div style="font-weight:900;letter-spacing:.6px">YOUTUBE PACK — SOLUTION (A/B)</div>
+          <button class="btn" id="copyYTSolution">Copy</button>
+        </div>
+        <div class="out" id="ytSolution">(generate to view)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* =========================
+   PWA INSTALL PROMPT
+========================= */
+let deferredPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const bar = document.getElementById("pwa-install-bar");
+  if (bar) bar.style.display = "block";
+});
+
+document.addEventListener("click", async (e) => {
+  if (e.target && e.target.id === "btn-install") {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    const bar = document.getElementById("pwa-install-bar");
+    if (bar) bar.style.display = "none";
+  }
+});
+
+/* =========================
+   SERVICE WORKER REGISTER
+========================= */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      reg.addEventListener("updatefound", () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener("statechange", () => {
+          if (sw.state === "installed" && navigator.serviceWorker.controller) {
+            console.log("New version available (refresh to update).");
+          }
+        });
+      });
+    } catch (e) {
+      console.warn("SW register failed", e);
+    }
+  });
+}
+</script>
+
+<script>
+/* =========================
+   UTIL
+========================= */
+const $ = (id) => document.getElementById(id);
+const toast = (m) => {
+  const t = $("toast");
+  t.textContent = m;
+  t.classList.add("on");
+  setTimeout(() => t.classList.remove("on"), 1700);
+};
+const SID = "SID-" + Math.random().toString(36).slice(2,6).toUpperCase();
+$("sidKpi").textContent = "SID: " + SID;
+
+function escapeTxt(s){ return String(s ?? "").trim(); }
+function nowISO(){ return new Date().toISOString(); }
+function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+function wordCount(s){
+  const m = String(s||"").trim().match(/\S+/g);
+  return m ? m.length : 0;
+}
+async function copy(text){
+  try{ await navigator.clipboard.writeText(text); toast("COPIED"); }
+  catch{ prompt("Copy:", text); }
+}
+
+function splitSentences(text){
+  const clean = String(text||"").replace(/\s+/g," ").trim();
+  if(!clean) return [];
+  return clean.split(/(?<=[.!?])\s+/).map(s=>s.trim()).filter(s=>s.length>10);
+}
+function keyPoints(text, max=8){
+  const s = splitSentences(text);
+  if(!s.length) return [];
+  const score = (x)=>{
+    let v=0;
+    v += clamp(x.length/45,0,6);
+    if(/\b(but|however|because|therefore|so|yet|instead)\b/i.test(x)) v+=2;
+    if(/\b(study|data|evidence|research|shows|proved)\b/i.test(x)) v+=1.5;
+    if(/\d/.test(x)) v+=1;
+    if(/[,:;]/.test(x)) v+=0.5;
+    return v;
+  };
+  return s.map(x=>({x,sc:score(x)})).sort((a,b)=>b.sc-a.sc).slice(0,max).map(o=>o.x);
+}
+function pick(arr, seed){
+  if(!arr.length) return "";
+  const n = Math.abs(hash(seed)) % arr.length;
+  return arr[n];
+}
+function hash(str){
+  let h=0;
+  for(let i=0;i<str.length;i++) h = (h<<5)-h + str.charCodeAt(i) | 0;
+  return h;
+}
+
+/* =========================
+   GOLD SCRIPT GENERATOR
+========================= */
+const VISUAL_PROMPT = "Dark studio. White kinetic typography. Slow push-in. No stock footage. Minimalist cinematic.";
+const TYPO_RULES = [
+  "Words in CAPS = full-screen emphasis",
+  "Words in [brackets] = slight delay appearance",
+  "Single-word lines = isolated center frame",
+  "\"…\" = 0.5 second pause"
+];
+
+const SCENE_PLAN = [
+  { purpose:"Hook", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Define the Problem", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Escalate Stakes", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Break the Illusion", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Introduce Solution", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Explain Mechanism", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Simplify", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Empower", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Reframe", curve:"Low → Build → Peak → Drop" },
+  { purpose:"Identity Shift", curve:"Low → Build → Peak → Drop" },
+];
+const DUR = [18,45,18,45,18,45,18,45,18,45];
+
+function punch(theme, seed){
+  const options = [
+    `${theme.toUpperCase()}. Not tomorrow.`,
+    "You already know.",
+    "This is the trap.",
+    "That’s the real cost.",
+    "Most people never notice.",
+    "It feels safe. It isn’t.",
+    "Comfort is expensive.",
+    "Clarity is a decision.",
+    "Stop waiting for certainty.",
+    "Choose. Then refine.",
+  ];
+  return pick(options, seed);
+}
+function rehook(i, topic){
+  const hooks = [
+    "Here’s the part nobody tells you…",
+    "If this feels personal, good.",
+    "In 10 seconds, you'll see it.",
+    "Now watch what happens next…",
+    `This changes how you see ${topic}.`,
+    "One question will expose it…",
+    "Most people get this backwards…",
+  ];
+  return hooks[(Math.floor(i/2)) % hooks.length];
+}
+
+function buildSceneText({topic, modeLabel, i, kps, isSlow}){
+  const theme = (topic.split(/\s+/)[0] || "THIS");
+  const seed = `${SID}-${modeLabel}-${i}-${topic}`;
+
+  if(isSlow){
+    return [
+      `[Look closely]…`,
+      rehook(i, topic),
+      `This is the ${modeLabel.toUpperCase()}.`,
+      `Not the story…`,
+      `The MECHANISM.`,
+      `CONTROL.`,
+      punch(theme, seed)
+    ].join("\n");
+  }
+
+  const kp = kps[i % Math.max(1,kps.length)] || "";
+  const kp2 = kps[(i+1) % Math.max(1,kps.length)] || "";
+
+  const opener = modeLabel === "problem"
+    ? `You don’t lose because you’re wrong. You lose because you hesitate.`
+    : `You don’t need motivation. You need a system that survives bad days.`;
+
+  const middle = modeLabel === "problem"
+    ? [
+      `You think you're being careful…`,
+      `But delay is a hidden decision.`,
+      `Every time you wait…`,
+      `your brain calls it “research”.`,
+      `But it’s really [avoidance].`,
+      ``,
+      `Here’s what it costs:`,
+      `Momentum.`,
+      `Identity.`,
+      `And trust in yourself.`,
+    ]
+    : [
+      `Here’s the shift:`,
+      `Stop trying to feel ready.`,
+      `Start trying to get feedback.`,
+      ``,
+      `Make the smallest decision you can…`,
+      `then iterate.`,
+      `That’s how certainty is built.`,
+      `Not found.`,
+    ];
+
+  const quote = kp ? `“${kp}”` : (modeLabel==="problem" ? "Certainty does not exist." : "Progress is proof.");
+  const reminder = kp2 ? `And remember: ${kp2}` : (modeLabel==="problem" ? "More options can mean less action." : "Small wins compound.");
+
+  const punchline = punch(theme, seed);
+
+  return [
+    rehook(i, topic),
+    ``,
+    opener,
+    ``,
+    ...middle,
+    ``,
+    quote,
+    ``,
+    reminder,
+    ``,
+    punchline
+  ].join("\n");
+}
+
+function buildGold({topic, modeLabel, sourceText}){
+  const kps = keyPoints(sourceText, 8);
+  const scenes = Array.from({length:10}).map((_,idx)=>{
+    const scene = idx+1;
+    const isSlow = scene % 2 === 1;
+    const pace = isSlow ? 2 : 220 + (idx % 41);
+    return {
+      scene,
+      duration_s: DUR[idx],
+      voice_pace_wpm: pace,
+      purpose: SCENE_PLAN[idx].purpose,
+      energy_curve: SCENE_PLAN[idx].curve,
+      visual_prompt: VISUAL_PROMPT,
+      typography_notes: TYPO_RULES,
+      script: buildSceneText({topic, modeLabel, i:idx, kps, isSlow})
+    };
+  });
+
+  return {
+    topic,
+    mode: modeLabel,
+    created_at: nowISO(),
+    style: { visual: VISUAL_PROMPT, tone: "Intelligent, calm, psychologically sharp, cinematic" },
+    rules: { slow_wpm:2, dense_wpm_range:[220,260], rehook_every_n_scenes:2, punchline_max_words:6 },
+    scenes
+  };
+}
+
+function goldToText(g){
+  const header = [
+    `TOPIC: ${g.topic}`,
+    `MODE: ${g.mode.toUpperCase()}`,
+    `STYLE: ${g.style.visual}`,
+    `TONE: ${g.style.tone}`,
+    ``,
+    `STRUCTURE RULES:`,
+    `- 10 scenes`,
+    `- Alternate slow (2 WPM) and dense (220–260 WPM)`,
+    `- Every scene includes Purpose + Energy Curve + Typography notes`,
+    `- Every dense scene includes a punchline under 6 words`,
+    `- Re-hook every 2 scenes`,
+    ``,
+  ].join("\n");
+
+  const body = g.scenes.map(s=>{
+    return [
+      `SCENE ${s.scene}`,
+      `Duration: ${s.duration_s}s`,
+      `Voice Pace: ${s.voice_pace_wpm} WPM`,
+      `Energy Curve: ${s.energy_curve}`,
+      `Purpose: ${s.purpose}`,
+      `VISUAL PROMPT: ${s.visual_prompt}`,
+      `TYPOGRAPHY NOTES:`,
+      ...s.typography_notes.map(x=>`- ${x}`),
+      ``,
+      `SCRIPT:`,
+      s.script,
+      ``,
+      `---`,
+      ``
+    ].join("\n");
+  }).join("\n");
+
+  return header + body;
+}
+
+/* =========================
+   YOUTUBE PACK GENERATOR (no technical terms)
+========================= */
+function ytTitleVariants(topic, kind){
+  const A = kind==="problem"
+    ? `You’re Not Lazy — You’re Stuck in ${topic}`
+    : `How to Break ${topic} (Without Forcing Motivation)`;
+  const B = kind==="problem"
+    ? `This is Why ${topic} Keeps Winning`
+    : `The Simple System That Fixes ${topic}`;
+  return { A, B };
+}
+function ytDescription(topic, kind){
+  const base = kind==="problem"
+    ? [
+      `If ${topic} keeps looping in your head, this video will feel uncomfortably accurate.`,
+      ``,
+      `You’ll see the pattern, why it happens, and what it silently costs.`,
+      ``,
+      `If you want the fix, watch the next video in the series (Solution).`,
+      ``,
+      `👇 Comment one sentence: what you’re stuck on right now.`,
+      ``,
+      `#decisions #mindset #focus`
+    ]
+    : [
+      `This is the solution video for ${topic}.`,
+      ``,
+      `No hype. Just a repeatable method you can use even on low-energy days.`,
+      ``,
+      `Try it once today and come back with results.`,
+      ``,
+      `👇 Comment: “DONE” after you apply it.`,
+      ``,
+      `#habits #focus #selfimprovement`
+    ];
+  return base.join("\n");
+}
+function ytPinnedComment(topic, kind){
+  const A = kind==="problem"
+    ? `What’s the ONE decision you’re avoiding right now? Reply with a single sentence.`
+    : `Pick ONE step from the video and do it today. Reply “DONE” when finished.`;
+  const B = kind==="problem"
+    ? `If I made a Part 2 (Solution), what should it solve first?`
+    : `Want a Part 3 with examples? Comment your situation (1–2 lines).`;
+  return { A, B };
+}
+function ytCommunityPost(topic, kind){
+  const A = kind==="problem"
+    ? `Quick poll: when ${topic} hits, what do you do?\n\nA) Overthink\nB) Distract myself\nC) Ask someone\nD) Take action anyway`
+    : `Today’s challenge: apply the solution to ${topic}.\n\nReply with:\n✅ What you did\n⏱️ How long it took\n🎯 What changed`;
+  const B = kind==="problem"
+    ? `Be honest — what’s the real cost of ${topic} in your life right now?`
+    : `If you could automate ONE habit to beat ${topic}, what would it be?`;
+  return { A, B };
+}
+function youtubePackText(topic, kind){
+  const titles = ytTitleVariants(topic, kind);
+  const pins = ytPinnedComment(topic, kind);
+  const comm = ytCommunityPost(topic, kind);
+
+  return [
+    `TYPE: ${kind.toUpperCase()}`,
+    ``,
+    `TITLE A: ${titles.A}`,
+    `TITLE B: ${titles.B}`,
+    ``,
+    `DESCRIPTION:`,
+    ytDescription(topic, kind),
+    ``,
+    `PINNED COMMENT A: ${pins.A}`,
+    `PINNED COMMENT B: ${pins.B}`,
+    ``,
+    `COMMUNITY POST A:`,
+    comm.A,
+    ``,
+    `COMMUNITY POST B:`,
+    comm.B,
+  ].join("\n");
+}
+
+/* =========================
+   PDF EXPORT (Watermark)
+========================= */
+function pdfWatermark(doc, text){
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  doc.saveGraphicsState?.();
+  doc.setTextColor(255,103,31);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(34);
+  try{ doc.setGState?.(new doc.GState({opacity:0.08})); }catch{}
+  doc.text(text, w/2, h/2, {align:"center", angle:35});
+  doc.restoreGraphicsState?.();
+}
+function paintBg(doc){
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  doc.setFillColor(5,5,5);
+  doc.rect(0,0,w,h,"F");
+}
+function addFooter(doc, brand, sid, pageNum, total){
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(9);
+  doc.setTextColor(170);
+  doc.text(`${brand} • ${sid}`, 44, h-18);
+  doc.text(`Page ${pageNum}/${total}`, w-44, h-18, {align:"right"});
+}
+function writeWrapped(doc, text, x, y, maxW, lineH=14, font="courier"){
+  doc.setFont(font,"normal");
+  const lines = doc.splitTextToSize(String(text||""), maxW);
+  for(const line of lines){
+    const h = doc.internal.pageSize.getHeight();
+    if(y > h-60){
+      doc.addPage();
+      paintBg(doc);
+      y = 54;
+    }
+    doc.text(line, x, y);
+    y += lineH;
+  }
+  return y;
+}
+
+function exportGoldPdf({topic, kind, gold, ytPack, watermarkText}){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  const w = doc.internal.pageSize.getWidth();
+  const margin = 44;
+
+  paintBg(doc);
+  pdfWatermark(doc, watermarkText);
+  doc.setTextColor(255,103,31);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(22);
+  doc.text("SCRIPT PACKAGE", margin, 64);
+
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16);
+  doc.text(topic, margin, 108);
+
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(10);
+  doc.setTextColor(180);
+  doc.text(`Type: ${kind.toUpperCase()}`, margin, 130);
+  doc.text(`Session: ${SID}`, margin, 146);
+  doc.text(`Generated: ${nowISO()}`, margin, 162);
+
+  doc.addPage();
+  paintBg(doc);
+  pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(14);
+  doc.setTextColor(255,255,255);
+  doc.text(`GOLD SCRIPT — ${kind.toUpperCase()}`, margin, 60);
+
+  doc.setFont("courier","normal");
+  doc.setFontSize(10);
+  doc.setTextColor(220);
+
+  let y = 86;
+  y = writeWrapped(doc, goldToText(gold), margin, y, w - margin*2, 12, "courier");
+
+  doc.addPage();
+  paintBg(doc);
+  pdfWatermark(doc, watermarkText);
+
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(14);
+  doc.setTextColor(255,255,255);
+  doc.text(`YOUTUBE PACK — ${kind.toUpperCase()} (A/B)`, margin, 60);
+
+  doc.setFont("courier","normal");
+  doc.setFontSize(10);
+  doc.setTextColor(220);
+  y = 86;
+  y = writeWrapped(doc, ytPack, margin, y, w - margin*2, 12, "courier");
+
+  const total = doc.getNumberOfPages();
+  for(let p=1;p<=total;p++){
+    doc.setPage(p);
+    addFooter(doc, "DECIDE CREATOR TOOL", SID, p, total);
+  }
+
+  doc.save(`${topic.replace(/\s+/g,"_")}_${kind}_SCRIPT_PACKAGE.pdf`);
+}
+
+function exportCombinedPdf({topic, goldProblem, goldSolution, ytProblem, ytSolution, watermarkText}){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  const w = doc.internal.pageSize.getWidth();
+  const margin = 44;
+
+  paintBg(doc);
+  pdfWatermark(doc, watermarkText);
+  doc.setTextColor(255,103,31);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(22);
+  doc.text("COMBINED SCRIPT PACKAGE", margin, 64);
+
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16);
+  doc.text(topic, margin, 108);
+
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(10);
+  doc.setTextColor(180);
+  doc.text(`Session: ${SID}`, margin, 130);
+  doc.text(`Generated: ${nowISO()}`, margin, 146);
+
+  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
+  doc.text("GOLD SCRIPT — PROBLEM", margin, 60);
+  doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(220);
+  let y = 86;
+  y = writeWrapped(doc, goldToText(goldProblem), margin, y, w - margin*2, 12, "courier");
+
+  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
+  doc.text("GOLD SCRIPT — SOLUTION", margin, 60);
+  doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(220);
+  y = 86;
+  y = writeWrapped(doc, goldToText(goldSolution), margin, y, w - margin*2, 12, "courier");
+
+  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
+  doc.text("YOUTUBE PACK — PROBLEM (A/B)", margin, 60);
+  doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(220);
+  y = 86;
+  y = writeWrapped(doc, ytProblem, margin, y, w - margin*2, 12, "courier");
+
+  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
+  doc.text("YOUTUBE PACK — SOLUTION (A/B)", margin, 60);
+  doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(220);
+  y = 86;
+  y = writeWrapped(doc, ytSolution, margin, y, w - margin*2, 12, "courier");
+
+  const total = doc.getNumberOfPages();
+  for(let p=1;p<=total;p++){
+    doc.setPage(p);
+    addFooter(doc, "DECIDE CREATOR TOOL", SID, p, total);
+  }
+
+  doc.save(`${topic.replace(/\s+/g,"_")}_COMBINED_SCRIPT_PACKAGE.pdf`);
+}
+
+/* =========================
+   MAIN ACTIONS
+========================= */
+let LAST = {
+  goldProblem:null, goldSolution:null,
+  ytProblem:"", ytSolution:""
+};
+
+function generate(){
+  const topic = escapeTxt($("topic").value) || "Untitled Topic";
+  const wm = escapeTxt($("watermark").value) || "DECIDE.ENGINE • INTERNAL";
+  const p = escapeTxt($("problem").value);
+  const s = escapeTxt($("solution").value);
+
+  if(!p && !s){
+    toast("Paste problem/solution text");
+    return;
+  }
+
+  const combinedLen = wordCount(p) + wordCount(s);
+  $("lenKpi").textContent = `Text: ${combinedLen} words`;
+
+  const goldProblem = buildGold({topic, modeLabel:"problem", sourceText: p || topic});
+  const goldSolution = buildGold({topic, modeLabel:"solution", sourceText: s || topic});
+
+  const ytP = youtubePackText(topic, "problem");
+  const ytS = youtubePackText(topic, "solution");
+
+  LAST.goldProblem = goldProblem;
+  LAST.goldSolution = goldSolution;
+  LAST.ytProblem = ytP;
+  LAST.ytSolution = ytS;
+  LAST.watermark = wm;
+  LAST.topic = topic;
+
+  $("outProblem").textContent = goldToText(goldProblem);
+  $("outSolution").textContent = goldToText(goldSolution);
+  $("ytProblem").textContent = ytP;
+  $("ytSolution").textContent = ytS;
+
+  toast("Generated ✅");
+  saveDraft(); // autosave on generate
+}
+
+$("gen").onclick = generate;
+
+$("copyAll").onclick = async ()=>{
+  if(!LAST.goldProblem) return toast("Generate first");
+  const blob = [
+    `TOPIC: ${LAST.topic}`,
+    `SID: ${SID}`,
+    ``,
+    `============================`,
+    `YOUTUBE PACK — PROBLEM (A/B)`,
+    `============================`,
+    LAST.ytProblem,
+    ``,
+    `============================`,
+    `YOUTUBE PACK — SOLUTION (A/B)`,
+    `============================`,
+    LAST.ytSolution
+  ].join("\n");
+  await copy(blob);
+};
+
+$("copyScriptProblem").onclick = async ()=> {
+  if(!LAST.goldProblem) return toast("Generate first");
+  await copy(goldToText(LAST.goldProblem));
+};
+$("copyScriptSolution").onclick = async ()=> {
+  if(!LAST.goldSolution) return toast("Generate first");
+  await copy(goldToText(LAST.goldSolution));
+};
+$("copyYTProblem").onclick = async ()=> {
+  if(!LAST.ytProblem) return toast("Generate first");
+  await copy(LAST.ytProblem);
+};
+$("copyYTSolution").onclick = async ()=> {
+  if(!LAST.ytSolution) return toast("Generate first");
+  await copy(LAST.ytSolution);
+};
+
+$("pdfProblem").onclick = ()=>{
+  if(!LAST.goldProblem) return toast("Generate first");
+  exportGoldPdf({
+    topic: LAST.topic,
+    kind: "problem",
+    gold: LAST.goldProblem,
+    ytPack: LAST.ytProblem,
+    watermarkText: LAST.watermark
+  });
+};
+$("pdfSolution").onclick = ()=>{
+  if(!LAST.goldSolution) return toast("Generate first");
+  exportGoldPdf({
+    topic: LAST.topic,
+    kind: "solution",
+    gold: LAST.goldSolution,
+    ytPack: LAST.ytSolution,
+    watermarkText: LAST.watermark
+  });
+};
+$("pdfCombined").onclick = ()=>{
+  if(!LAST.goldProblem) return toast("Generate first");
+  exportCombinedPdf({
+    topic: LAST.topic,
+    goldProblem: LAST.goldProblem,
+    goldSolution: LAST.goldSolution,
+    ytProblem: LAST.ytProblem,
+    ytSolution: LAST.ytSolution,
+    watermarkText: LAST.watermark
+  });
+};
+
+$("reset").onclick = ()=>{
+  $("topic").value="";
+  $("problem").value="";
+  $("solution").value="";
+  $("outProblem").textContent="(generate to view)";
+  $("outSolution").textContent="(generate to view)";
+  $("ytProblem").textContent="(generate to view)";
+  $("ytSolution").textContent="(generate to view)";
+  LAST = { goldProblem:null, goldSolution:null, ytProblem:"", ytSolution:"" };
+  $("lenKpi").textContent="Text: —";
+  toast("Reset");
+  saveDraft();
+};
+
+/* =========================
+   AUTOSAVE (localStorage)
+========================= */
+const STORAGE_KEY = "decide_creator_tool_v1";
+const AUTOSAVE_FIELDS = ["topic","watermark","channelName","playlist","problem","solution"];
+
+function readField(id) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  if (el.tagName === "SELECT") return el.value;
+  return el.value;
+}
+function writeField(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.tagName === "SELECT") el.value = val ?? "";
+  else el.value = val ?? "";
+}
+
+function loadSavedDraft() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    AUTOSAVE_FIELDS.forEach((k) => writeField(k, data[k]));
+    if (data && (data.topic || data.problem || data.solution)) toast("Draft restored ✅");
+  } catch (e) {
+    console.warn("Draft restore failed", e);
+  }
+}
+
+let saveTimer = null;
+function scheduleSaveDraft() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveDraft, 350);
+}
+
+function saveDraft() {
+  try {
+    const payload = { updated_at: new Date().toISOString() };
+    AUTOSAVE_FIELDS.forEach((k) => (payload[k] = readField(k)));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.warn("Draft save failed", e);
+  }
+}
+
+function clearDraft() {
+  localStorage.removeItem(STORAGE_KEY);
+  AUTOSAVE_FIELDS.forEach((k) => writeField(k, ""));
+  ["outProblem","outSolution","ytProblem","ytSolution"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "(generate to view)";
+  });
+  LAST = { goldProblem:null, goldSolution:null, ytProblem:"", ytSolution:"" };
+  const lenKpi = document.getElementById("lenKpi");
+  if (lenKpi) lenKpi.textContent = "Text: —";
+  toast("Saved draft cleared");
+  saveDraft();
+}
+
+function initAutosave() {
+  AUTOSAVE_FIELDS.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("input", scheduleSaveDraft);
+    el.addEventListener("change", scheduleSaveDraft);
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") saveDraft();
+  });
+
+  const btn = document.getElementById("clearSaved");
+  if (btn) btn.addEventListener("click", clearDraft);
+
+  saveDraft();
+}
+
+window.addEventListener("load", () => {
+  loadSavedDraft();
+  initAutosave();
+});
+</script>
+</body>
+</html>
