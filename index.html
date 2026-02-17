@@ -3,1019 +3,516 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Decide Creator Tool</title>
-
-  <!-- PWA -->
-  <meta name="theme-color" content="#050505" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-
-  <!-- jsPDF + autotable -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
+  <title>Decide Engine Course Builder</title>
   <style>
-    :root{
-      --bg:#050505;
-      --panel:rgba(20,20,20,.94);
-      --border:rgba(255,255,255,.10);
-      --text:#fff;
-      --muted:rgba(255,255,255,.65);
-      --accent:#ff671f;
-      --good:#00e676;
-      --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+    :root { --bg:#0b0d10; --panel:#12161c; --text:#e8eef7; --muted:#a8b3c2; --line:#243041; --acc:#7dd3fc; }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    header{ padding:16px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(11,13,16,.9); backdrop-filter: blur(8px); }
+    h1{ margin:0; font-size:16px; font-weight:700; letter-spacing:.2px; }
+    main{ padding:18px 20px 50px; max-width:1200px; margin:0 auto; }
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
+    .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; }
+    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    input, textarea, select{
+      width:100%; border-radius:12px; border:1px solid var(--line);
+      background:#0f1318; color:var(--text); padding:10px 12px; outline:none;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      background: radial-gradient(1200px 900px at 40% 10%, #111 0%, var(--bg) 60%);
-      color:var(--text);
-      font-family:var(--font);
-      overflow:auto;
-    }
-    .wrap{max-width:1200px;margin:0 auto;padding:24px}
-    .top{
-      display:flex;gap:14px;align-items:center;justify-content:space-between;
-      margin-bottom:14px;flex-wrap:wrap
-    }
-    .badge{
-      display:inline-flex;align-items:center;gap:10px;
-      padding:10px 14px;border-radius:14px;
-      border:1px solid rgba(255,103,31,.22);
-      background:rgba(255,103,31,.08);
-      font-weight:900;letter-spacing:.8px
-    }
-    .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 12px rgba(0,230,118,.7)}
-    .panel{
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:18px;
-      padding:16px;
-      box-shadow:0 20px 70px rgba(0,0,0,.55);
-    }
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    @media (max-width:980px){ .grid{grid-template-columns:1fr} }
-    label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:.4px}
-    input,textarea,select{
-      width:100%;
-      background:rgba(0,0,0,.35);
-      border:1px solid var(--border);
-      border-radius:14px;
-      color:#fff;
-      padding:12px 12px;
-      font-size:14px;
-      outline:none;
-    }
-    textarea{min-height:190px;resize:vertical;line-height:1.5}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
+    textarea{ min-height:120px; resize:vertical; line-height:1.35; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .row > * { flex:1; min-width: 200px; }
     .btn{
-      cursor:pointer;
-      padding:12px 14px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      color:#fff;
-      font-weight:900;
-      letter-spacing:.6px;
-      text-transform:uppercase;
-      user-select:none;
+      border:1px solid var(--line); background:#0f1318; color:var(--text);
+      padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600;
     }
-    .btn:active{transform:scale(.985);opacity:.92}
-    .btn.primary{background:var(--accent);border:none;color:#000}
-    .btn.good{background:rgba(0,230,118,.16);border-color:rgba(0,230,118,.35);color:var(--good)}
-    .btn.warn{background:rgba(255,255,255,.05);border-color:rgba(255,103,31,.25);color:var(--accent)}
-    .small{font-size:12px;color:var(--muted)}
-    .mono{font-family:var(--mono)}
-    .out{
-      background:rgba(0,0,0,.38);
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:16px;
-      padding:14px;
-      overflow:auto;
-      max-height:460px;
-      white-space:pre-wrap;
-      line-height:1.45;
-      font-family:var(--mono);
-      font-size:12.5px;
+    .btn:hover{ border-color:#365071; }
+    .btn.primary{ border-color:#2b6b83; background: linear-gradient(180deg, rgba(125,211,252,.14), rgba(125,211,252,.04)); }
+    .btn.danger{ border-color:#7a2d2d; }
+    .small{ font-size:12px; color:var(--muted); }
+    .outHead{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .outHead h2{ margin:0; font-size:14px; }
+    pre{
+      white-space:pre-wrap; word-wrap:break-word;
+      background:#0f1318; border:1px solid var(--line); border-radius:12px;
+      padding:12px; margin:0;
     }
-    .toast{
-      position:fixed;left:50%;bottom:20px;transform:translateX(-50%);
-      background:rgba(10,10,10,.92);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:999px;
-      padding:12px 16px;
-      color:var(--good);
-      font-family:var(--mono);
-      font-size:12px;
-      opacity:0;
-      pointer-events:none;
-      transition:opacity .18s, transform .18s;
-      z-index:99999;
-    }
-    .toast.on{opacity:1;transform:translateX(-50%) translateY(-10px)}
-    .kpi{display:flex;gap:12px;flex-wrap:wrap}
-    .kpi span{
-      font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.7);
-      padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.04);
-    }
-    .hr{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
-    .miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (max-width:980px){ .miniGrid{grid-template-columns:1fr} }
+    .pill{ display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); font-size:12px; }
+    footer{ margin-top:18px; }
   </style>
 </head>
-
 <body>
-  <!-- Install prompt bar -->
-  <div id="pwa-install-bar" style="display:none;position:sticky;top:0;z-index:99999;background:rgba(0,0,0,.65);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 14px;">
-    <button id="btn-install" style="cursor:pointer;width:100%;padding:12px 14px;border-radius:14px;border:0;background:#ff671f;color:#000;font-weight:900;letter-spacing:.6px;text-transform:uppercase;">
-      Install Decide Creator Tool
-    </button>
-  </div>
+<header>
+  <h1>Decide Engine — Topic → (Problem + Solution) Generator</h1>
+</header>
 
-  <div class="wrap">
-    <div class="top">
-      <div class="badge"><span class="dot"></span> DECIDE CREATOR TOOL <span class="mono" style="opacity:.7">GOLD+VISUAL</span></div>
-      <div class="kpi">
-        <span id="sidKpi">SID: —</span>
-        <span id="lenKpi">Text: —</span>
-        <span id="healthKpi">Script: —</span>
+<main class="grid">
+  <section class="card">
+    <div class="row">
+      <div>
+        <label>Course / Playlist Name</label>
+        <input id="courseName" placeholder="Decision Systems for Modern Operators" />
+      </div>
+      <div>
+        <label>Module #</label>
+        <input id="moduleNo" placeholder="01" />
       </div>
     </div>
 
-    <div class="panel">
-      <div class="grid">
-        <div>
-          <label>Topic</label>
-          <input id="topic" placeholder="e.g. Overthinking decisions" />
-        </div>
+    <label>Topic (single line)</label>
+    <input id="topic" placeholder="Incentives Beat Intelligence" />
 
-        <div class="miniGrid">
-          <div>
-            <label>Brand / Watermark (PDF)</label>
-            <input id="watermark" value="DECIDE.ENGINE • INTERNAL • DO NOT REUPLOAD" />
-          </div>
-          <div>
-            <label>Channel Name (text only)</label>
-            <input id="channelName" value="decide.engine" />
-          </div>
-          <div>
-            <label>Default Playlist Label</label>
-            <select id="playlist">
-              <option value="problems">Problems</option>
-              <option value="solutions">Solutions</option>
-            </select>
-          </div>
-          <div>
-            <label>Visual Style Preset</label>
-            <select id="visualPreset">
-              <option value="studio">Dark Studio (default)</option>
-              <option value="noir">Noir (hard shadows)</option>
-              <option value="neon">Neon Edge (subtle glow)</option>
-              <option value="minimal">Minimal (flat, clean)</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label>Problem input (your notes)</label>
-          <textarea id="problem" placeholder="Paste problem research / story / bullets..."></textarea>
-        </div>
-
-        <div>
-          <label>Solution input (your notes)</label>
-          <textarea id="solution" placeholder="Paste solution framework / steps / payoff..."></textarea>
-        </div>
+    <div class="row">
+      <div>
+        <label>Audience</label>
+        <input id="audience" placeholder="operators (builders, founders, engineers)" />
       </div>
-
-      <div class="hr"></div>
-
-      <div class="row">
-        <button class="btn primary" id="gen">Generate</button>
-        <button class="btn good" id="copyAll">Copy YouTube Pack (Both)</button>
-        <button class="btn" id="copyVisualProblem">Copy Visual Prompts (Problem)</button>
-        <button class="btn" id="copyVisualSolution">Copy Visual Prompts (Solution)</button>
-        <button class="btn warn" id="pdfProblem">PDF: Problem</button>
-        <button class="btn warn" id="pdfSolution">PDF: Solution</button>
-        <button class="btn warn" id="pdfCombined">PDF: Combined</button>
-        <button class="btn" id="reset">Reset</button>
-        <button class="btn" id="clearSaved">Clear Saved</button>
-      </div>
-
-      <div class="small" style="margin-top:10px">
-        Output includes: Script + Visual prompts + Editor checklist. Autosaves drafts. Offline after first load.
+      <div>
+        <label>Tone</label>
+        <select id="tone">
+          <option value="operator">Operator / clinical</option>
+          <option value="teaching">Teaching / structured</option>
+          <option value="debate">Debate / contrarian but safe</option>
+        </select>
       </div>
     </div>
 
-    <div class="grid" style="margin-top:14px">
-      <div class="panel">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div style="font-weight:900;letter-spacing:.6px">GOLD SCRIPT — PROBLEM</div>
-          <button class="btn" id="copyScriptProblem">Copy</button>
+    <label>Bullet points (one per line)</label>
+    <textarea id="bullets" placeholder="e.g.
+- Incentives determine behavior
+- Hidden metrics drive real decisions
+- Goodhart's Law failure modes"></textarea>
+
+    <div class="row">
+      <button class="btn primary" id="generateBtn">Generate Outputs</button>
+      <button class="btn" id="saveBtn">Save</button>
+      <button class="btn" id="loadBtn">Load</button>
+      <button class="btn danger" id="resetBtn">Reset</button>
+    </div>
+
+    <label>NotebookLM Source Pack Prompt (auto-filled)</label>
+    <textarea id="notebookPrompt"></textarea>
+
+    <div class="row">
+      <button class="btn" id="copyPromptBtn">Copy Prompt</button>
+      <button class="btn" id="exportBtn">Export JSON</button>
+      <button class="btn" id="importBtn">Import JSON</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" />
+    </div>
+
+    <p class="small">
+      Notes: This tool uses localStorage only. No network calls. Works offline.
+    </p>
+  </section>
+
+  <section class="card">
+    <div class="outHead">
+      <h2>Outputs</h2>
+      <span class="pill" id="statusPill">idle</span>
+    </div>
+
+    <div style="display:grid; gap:12px;">
+      <div>
+        <div class="outHead">
+          <h2>Problem Video Script</h2>
+          <button class="btn" data-copy="problemScript">Copy</button>
         </div>
-        <div class="out" id="outProblem">(generate to view)</div>
+        <pre id="problemScript"></pre>
       </div>
 
-      <div class="panel">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div style="font-weight:900;letter-spacing:.6px">GOLD SCRIPT — SOLUTION</div>
-          <button class="btn" id="copyScriptSolution">Copy</button>
+      <div>
+        <div class="outHead">
+          <h2>Solution Video Script</h2>
+          <button class="btn" data-copy="solutionScript">Copy</button>
         </div>
-        <div class="out" id="outSolution">(generate to view)</div>
+        <pre id="solutionScript"></pre>
       </div>
 
-      <div class="panel">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div style="font-weight:900;letter-spacing:.6px">VISUAL PROMPTS — PROBLEM</div>
-          <button class="btn" id="copyVisualProblem2">Copy</button>
+      <div>
+        <div class="outHead">
+          <h2>YouTube Post</h2>
+          <button class="btn" data-copy="ytPost">Copy</button>
         </div>
-        <div class="out" id="visualProblem">(generate to view)</div>
+        <pre id="ytPost"></pre>
       </div>
 
-      <div class="panel">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div style="font-weight:900;letter-spacing:.6px">VISUAL PROMPTS — SOLUTION</div>
-          <button class="btn" id="copyVisualSolution2">Copy</button>
+      <div>
+        <div class="outHead">
+          <h2>Visual Guide (Problem + Solution)</h2>
+          <button class="btn" data-copy="visualGuide">Copy</button>
         </div>
-        <div class="out" id="visualSolution">(generate to view)</div>
+        <pre id="visualGuide"></pre>
       </div>
 
-      <div class="panel">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div style="font-weight:900;letter-spacing:.6px">YOUTUBE PACK — PROBLEM (A/B)</div>
-          <button class="btn" id="copyYTProblem">Copy</button>
+      <div>
+        <div class="outHead">
+          <h2>A/B Test Posts (2 variants)</h2>
+          <button class="btn" data-copy="abPosts">Copy</button>
         </div>
-        <div class="out" id="ytProblem">(generate to view)</div>
-      </div>
-
-      <div class="panel">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div style="font-weight:900;letter-spacing:.6px">YOUTUBE PACK — SOLUTION (A/B)</div>
-          <button class="btn" id="copyYTSolution">Copy</button>
-        </div>
-        <div class="out" id="ytSolution">(generate to view)</div>
-      </div>
-
-      <div class="panel" style="grid-column:1 / -1">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div style="font-weight:900;letter-spacing:.6px">EDITOR CHECKLIST (what to do with PDF script)</div>
-          <button class="btn" id="copyChecklist">Copy</button>
-        </div>
-        <div class="out" id="checklist">(generate to view)</div>
+        <pre id="abPosts"></pre>
       </div>
     </div>
-  </div>
 
-  <div class="toast" id="toast"></div>
+    <footer class="small">
+      Tip: Keep bullets concrete (mechanisms, constraints, examples). Avoid adjectives.
+    </footer>
+  </section>
+</main>
 
 <script>
-/* =========================
-   PWA INSTALL + SW
-========================= */
-let deferredPrompt = null;
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  const bar = document.getElementById("pwa-install-bar");
-  if (bar) bar.style.display = "block";
-});
-document.addEventListener("click", async (e) => {
-  if (e.target && e.target.id === "btn-install") {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    const bar = document.getElementById("pwa-install-bar");
-    if (bar) bar.style.display = "none";
-  }
-});
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
-    try { await navigator.serviceWorker.register("/sw.js"); }
-    catch (e) { console.warn("SW register failed", e); }
-  });
-}
-</script>
+(function(){
+  const $ = (id) => document.getElementById(id);
 
-<script>
-/* =========================
-   UTIL
-========================= */
-const $ = (id) => document.getElementById(id);
-const toast = (m) => {
-  const t = $("toast");
-  t.textContent = m;
-  t.classList.add("on");
-  setTimeout(() => t.classList.remove("on"), 1700);
-};
-const SID = "SID-" + Math.random().toString(36).slice(2,6).toUpperCase();
-$("sidKpi").textContent = "SID: " + SID;
+  const STORAGE_KEY = "decide_engine_course_builder_v1";
 
-function nowISO(){ return new Date().toISOString(); }
-function wordCount(s){
-  const m = String(s||"").trim().match(/\S+/g);
-  return m ? m.length : 0;
-}
-async function copy(text){
-  try{ await navigator.clipboard.writeText(text); toast("COPIED"); }
-  catch{ prompt("Copy:", text); }
-}
-function cleanText(s){
-  return String(s||"")
-    .replace(/\r/g,"")
-    .replace(/[ \t]+\n/g,"\n")
-    .replace(/\n{3,}/g,"\n\n")
-    .trim();
-}
-function lines(text){
-  return cleanText(text).split("\n").map(x=>x.trim()).filter(Boolean);
-}
-
-/* =========================
-   SAFE KEYPOINTS (prevents corruption)
-========================= */
-function keyPointsSafe(text, max=8){
-  const arr = lines(text);
-  if (!arr.length) return [];
-  // Prefer short lines/bullets; fallback to sentence-like fragments
-  const candidates = arr
-    .map(x => x.replace(/^[-*•]\s*/,""))
-    .filter(x => x.length >= 18 && x.length <= 140);
-
-  const uniq = [];
-  const seen = new Set();
-  for(const c of candidates){
-    const k = c.toLowerCase();
-    if(seen.has(k)) continue;
-    seen.add(k);
-    uniq.push(c);
-    if(uniq.length >= max) break;
+  function nowISO(){
+    return new Date().toISOString();
   }
 
-  // fallback
-  if(!uniq.length){
-    return [arr.slice(0, max).join(" ").slice(0,140)];
-  }
-  return uniq;
-}
-
-/* =========================
-   GOLD SCRIPT (clean, structured)
-========================= */
-const SCENE_META = [
-  { purpose:"Hook", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
-  { purpose:"Define the Problem", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 },
-  { purpose:"Escalate Stakes", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
-  { purpose:"Break the Illusion", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 },
-  { purpose:"Introduce Solution", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
-  { purpose:"Explain Mechanism", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 },
-  { purpose:"Simplify", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
-  { purpose:"Empower", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 },
-  { purpose:"Reframe", curve:"Low → Build → Peak → Drop", pace:"Slow (2 WPM)", duration:18 },
-  { purpose:"Identity Shift", curve:"Low → Build → Peak → Drop", pace:"Dynamic (220–260 WPM)", duration:45 }
-];
-
-const TYPO_RULES = [
-  "CAPS = full screen emphasis",
-  "[brackets] = slight delay appearance",
-  "Single-word line = isolated center",
-  "\"…\" = 0.5s pause"
-];
-
-function hookLine(topic, mode){
-  const t = topic || "this";
-  const hooksP = [
-    `You think you’re being careful…`,
-    `But ${t} isn’t careful.`,
-    `It’s quiet damage.`,
-    `This is why you feel stuck…`
-  ];
-  const hooksS = [
-    `You don’t need more willpower…`,
-    `You need a repeatable move.`,
-    `Here’s the system for ${t}.`,
-    `No hype. Just control.`
-  ];
-  return (mode==="problem" ? hooksP : hooksS);
-}
-
-function punchLine(mode){
-  return mode==="problem"
-    ? ["Stop waiting for certainty.","This is the trap.","Delay is a decision.","Comfort is expensive."]
-    : ["Small wins compound.","Choose. Then refine.","Systems beat moods.","Do it once. Repeat."];
-}
-
-function buildSceneScript({mode, topic, kp, idx}){
-  const isSlow = (idx % 2 === 0);
-  const hooks = hookLine(topic, mode);
-  const punch = punchLine(mode);
-
-  // Slow scenes: short, cinematic, clean typography behavior
-  if(isSlow){
-    const h = hooks[idx % hooks.length];
-    const p = punch[idx % punch.length];
-    return [
-      `${h}`,
-      `…`,
-      `You don’t need more information.`,
-      `You need`,
-      `CONTROL.`,
-      `…`,
-      `${p}`
-    ].join("\n");
+  function sanitizeLines(text){
+    return (text || "")
+      .split("\n")
+      .map(l => l.replace(/^\s*[-*]\s?/, "").trim())
+      .filter(Boolean);
   }
 
-  // Dynamic scenes: structured narrative, not random
-  const base = mode==="problem"
-    ? [
-      `Every time you delay a decision…`,
-      `your brain calls it “being responsible”.`,
-      `But delay is protection.`,
-      `Protection from regret.`,
-      `Protection from responsibility.`,
-      ``,
-      `And it has a price:`,
-      `Momentum dies quietly.`,
-      `Confidence leaks.`,
-      `Identity stays unfinished.`,
-    ]
-    : [
-      `Here’s the method:`,
-      `Make the smallest decision that creates feedback.`,
-      `Then adjust.`,
-      ``,
-      `Don’t aim for certainty.`,
-      `Aim for evidence.`,
-      `Evidence creates confidence.`,
-      `Confidence creates speed.`,
+  function titleCase(s){
+    return (s||"").trim();
+  }
+
+  function buildNotebookPrompt(topic, angle, audience){
+    return `You are my research analyst. Build a “Source Pack” for the topic below using only reliable sources.
+
+Topic: ${topic}
+Angle: ${angle}
+Audience: ${audience}
+
+Goal outputs:
+1) 10–15 sources grouped by credibility tier
+2) For each source: 2–5 bullet takeaways + why it matters
+3) Conflicts/Disagreements between sources (if any)
+4) Recency check: note the publication year and whether newer research exists
+5) Key terms definitions (clear, non-hype)
+6) Evidence map: claims → supporting sources
+
+Source rules (strict):
+- Prefer peer-reviewed papers, university publications, standards bodies, official docs, reputable books, and high-quality journalism.
+- Avoid low-signal blogs, anonymous posts, motivational content.
+- Include at least:
+  - 3 peer-reviewed / academic sources
+  - 2 books or book chapters (credible publishers)
+  - 2 high-quality industry reports / standards / official docs
+- If sources disagree, summarize both sides and the strength of evidence.
+
+Reliability scoring (0–5):
+- 5 = peer-reviewed / official standard / primary data
+- 4 = university / major publisher book / reputable institution report
+- 3 = reputable journalism / expert consensus summaries
+- 0–2 = avoid unless uniquely necessary
+
+Deliver in this structure:
+- Tier 1 (5/5): …
+- Tier 2 (4/5): …
+- Tier 3 (3/5): …
+- Evidence map
+- Contradictions & uncertainty
+- “What not to claim” (claims not supported strongly enough)
+
+Do not write the script yet. Only build the Source Pack.`;
+  }
+
+  function buildProblemScript(ctx){
+    const bullets = ctx.bullets;
+    const b = bullets.map(x => `- ${x}`).join("\n");
+
+    return `TITLE: ${ctx.moduleLabel} — ${ctx.topic} (Problem)
+
+OPEN (0:00–0:20)
+- Claim: Most people misdiagnose ${ctx.topic.toLowerCase()} and treat symptoms as causes.
+- Promise: You’ll leave with a clean failure-map, not “tips”.
+
+CONTEXT (0:20–1:10)
+- Who this is for: ${ctx.audience}
+- What this is NOT: motivation, self-improvement, generic advice.
+
+THE FAILURE MAP (1:10–5:30)
+Explain the mechanism that causes failure. Use concrete examples.
+Anchor points from your bullets:
+${b}
+
+WHY COMMON ADVICE FAILS (5:30–7:00)
+- Identify 2–3 popular approaches.
+- Show how they break under incentives, constraints, and second-order effects.
+
+COST OF FAILURE (7:00–8:00)
+- Time loss / money loss / reputation loss / opportunity loss.
+- Make the cost legible.
+
+TRANSITION (8:00–8:20)
+- “In the next video, we build the system: inputs, rules, and a repeatable checklist.”`;
+  }
+
+  function buildSolutionScript(ctx){
+    const bullets = ctx.bullets;
+    const b = bullets.map((x,i) => `${i+1}) ${x}`).join("\n");
+
+    return `TITLE: ${ctx.moduleLabel} — ${ctx.topic} (Solution)
+
+OPEN (0:00–0:25)
+- Goal: Convert ${ctx.topic.toLowerCase()} into a repeatable decision system.
+- Output: a checklist + a simple model you can run weekly.
+
+SYSTEM OVERVIEW (0:25–1:20)
+- Inputs → Filters → Decision → Feedback loop
+- Define success metric (one sentence).
+
+THE SYSTEM (1:20–7:30)
+Use the bullets as system steps, rules, or constraints:
+${b}
+
+WORKED EXAMPLE (7:30–9:00)
+- Show a realistic scenario.
+- Run it through the system step-by-step.
+- State what the system rejects and why.
+
+FAIL-SAFES (9:00–10:00)
+- Kill criteria
+- Reversibility check
+- Disconfirmation step (what would prove this wrong?)
+
+CLOSE (10:00–10:20)
+- Summary in 3 lines
+- Point to Source Pack / notebook for evidence map.`;
+  }
+
+  function buildYTPost(ctx){
+    const hooks = [
+      `Most people misunderstand ${ctx.topic.toLowerCase()}.`,
+      `${ctx.topic} isn’t a mindset problem. It’s a system problem.`,
+      `If you don’t model incentives/constraints, ${ctx.topic.toLowerCase()} becomes noise.`
     ];
 
-  const insert = kp ? [
-    ``,
-    `Truth check:`,
-    `“${kp}”`
-  ] : [];
+    return `${hooks[0]}
 
-  const rehook = idx % 2 === 1 ? `Now watch this…` : `Here’s the twist…`;
-  const p = punch[(idx + 1) % punch.length];
+Module ${ctx.moduleNo}: ${ctx.topic}
+- Video 1: Problem (failure map)
+- Video 2: Solution (repeatable system + checklist)
 
-  return [
-    rehook,
-    ``,
-    ...base,
-    ...insert,
-    ``,
-    p
-  ].join("\n");
-}
+Key ideas:
+${ctx.bullets.map(x=>`• ${x}`).join("\n")}
 
-function buildGold({topic, mode, sourceText}){
-  const kps = keyPointsSafe(sourceText, 8);
-  const scenes = SCENE_META.map((m, idx) => {
+Source Pack (NotebookLM): link in description
+#decideengine #decisionsystems`;
+  }
+
+  function buildVisualGuide(ctx){
+    const steps = ctx.bullets.length ? ctx.bullets : ["Define the failure", "Model constraints", "Build checklist", "Add feedback loop"];
+    const flow = `INPUTS → FILTERS → DECISION → FEEDBACK`;
+
+    return `VISUAL GUIDE — ${ctx.moduleLabel}: ${ctx.topic}
+
+PROBLEM VIDEO VISUALS
+1) “Failure Map” slide:
+   - Symptom → Mechanism → Root cause
+2) “Why advice fails” slide:
+   - Advice A → breaks because ___
+   - Advice B → breaks because ___
+3) “Cost of failure” slide:
+   - Time / Money / Reputation / Opportunity
+
+SOLUTION VIDEO VISUALS
+1) System diagram:
+   ${flow}
+2) Checklist slide (show on screen):
+   ${steps.map((s,i)=>`${i+1}. ${s}`).join("\n   ")}
+3) Worked example table:
+   - Scenario | Input | Filter result | Decision | Next check date
+
+THUMBNAIL / TITLE FORMAT
+- Problem: “Why ${ctx.topic} Fails”
+- Solution: “The ${ctx.topic} System”`;
+  }
+
+  function buildABPosts(ctx){
+    const a = `A) People don’t fail because they lack discipline.
+They fail because their system is mis-specified.
+
+Module ${ctx.moduleNo}: ${ctx.topic}
+Problem video: failure map → why common advice breaks
+Solution video: decision system → checklist → worked example`;
+
+    const b = `B) If your results are inconsistent, your decision rules are inconsistent.
+
+Module ${ctx.moduleNo}: ${ctx.topic}
+Video 1: diagnose the mechanism
+Video 2: install the system`;
+
+    return `${a}\n\n---\n\n${b}`;
+  }
+
+  function buildModuleLabel(courseName, moduleNo){
+    const no = (moduleNo||"").toString().trim() || "01";
+    return `${courseName} / Module ${no.padStart(2,"0")}`;
+  }
+
+  function getCtx(){
+    const courseName = titleCase($("courseName").value || "Decision Systems for Modern Operators");
+    const moduleNo = ($("moduleNo").value || "01").trim();
+    const topic = titleCase($("topic").value || "Untitled Topic");
+    const audience = ($("audience").value || "operators (builders, founders, engineers)").trim();
+    const tone = $("tone").value;
+    const bullets = sanitizeLines($("bullets").value);
+
     return {
-      scene: idx+1,
-      duration_s: m.duration,
-      voice_pace: m.pace,
-      energy_curve: m.curve,
-      purpose: m.purpose,
-      typography_notes: TYPO_RULES,
-      script: buildSceneScript({mode, topic, kp: kps[idx % Math.max(1,kps.length)], idx})
+      courseName, moduleNo, topic, audience, tone, bullets,
+      moduleLabel: buildModuleLabel(courseName, moduleNo)
     };
-  });
-
-  // Health check (basic)
-  const all = scenes.map(s=>s.script).join("\n");
-  const hasWeird = /undefined|null|\[object Object\]/i.test(all) || all.length < 200;
-  $("healthKpi").textContent = hasWeird ? "Script: ⚠" : "Script: ✅";
-
-  return { topic, mode, created_at: nowISO(), scenes };
-}
-
-function goldToText(g){
-  const header = [
-    `TOPIC: ${g.topic}`,
-    `MODE: ${g.mode.toUpperCase()}`,
-    ``,
-    `STYLE: Dark studio • White kinetic typography • Slow push-in • No stock footage`,
-    `TYPOGRAPHY: ${TYPO_RULES.join(" | ")}`,
-    ``,
-  ].join("\n");
-
-  const body = g.scenes.map(s => ([
-    `SCENE ${s.scene}`,
-    `Duration: ${s.duration_s}s`,
-    `Voice Pace: ${s.voice_pace}`,
-    `Energy Curve: ${s.energy_curve}`,
-    `Purpose: ${s.purpose}`,
-    `TYPO NOTES: ${s.typography_notes.join(" | ")}`,
-    ``,
-    `SCRIPT:`,
-    s.script,
-    ``,
-    `---`,
-    ``
-  ].join("\n"))).join("\n");
-
-  return header + body;
-}
-
-/* =========================
-   VISUAL PROMPT GENERATOR (per-scene)
-========================= */
-function visualPresetText(preset){
-  switch(preset){
-    case "noir":
-      return "Noir studio, hard shadows, high contrast, tight rim light, monochrome feel.";
-    case "neon":
-      return "Dark studio with subtle neon edge glow, soft haze, gentle bloom, cinematic contrast.";
-    case "minimal":
-      return "Minimal studio, flat clean lighting, no bloom, crisp text edges, calm framing.";
-    default:
-      return "Dark studio, soft rim light, cinematic contrast, subtle grain, slow push-in.";
-  }
-}
-
-function visualForScene({topic, mode, scene, purpose, isSlow, preset}){
-  const base = visualPresetText(preset);
-  const cam = isSlow ? "Slow push-in 2–4% zoom" : "Micro push + subtle handheld drift (very low)";
-  const typ = isSlow
-    ? "Typography: 1–2 words at a time, big center, long holds, heavy pauses"
-    : "Typography: kinetic emphasis on CAPS words, phrase-by-phrase reveals, 2–3 key punch words isolated";
-  const pace = isSlow ? "Timing: 0.8–1.2s between words" : "Timing: 0.15–0.35s per phrase with 1–2 pattern interrupts";
-  const sfx = isSlow ? "SFX: deep room tone, sub bass swell, soft hit on CAPS" : "SFX: light risers, click accents, bass hit on punchline";
-
-  const modeTag = mode === "problem" ? "Tension / trap" : "Clarity / control";
-  return [
-    `SCENE ${scene} — ${purpose}`,
-    `Mood: ${modeTag}`,
-    `Look: ${base}`,
-    `Camera: ${cam}`,
-    `${typ}`,
-    `${pace}`,
-    `${sfx}`,
-    `On-screen: reference topic = "${topic}"`
-  ].join("\n");
-}
-
-function buildVisualPack(gold, preset){
-  const blocks = gold.scenes.map((s, idx)=>{
-    const isSlow = (idx % 2 === 0);
-    return visualForScene({
-      topic: gold.topic,
-      mode: gold.mode,
-      scene: s.scene,
-      purpose: s.purpose,
-      isSlow,
-      preset
-    });
-  });
-  return [
-    `VISUAL PROMPT PACK`,
-    `TOPIC: ${gold.topic}`,
-    `MODE: ${gold.mode.toUpperCase()}`,
-    `PRESET: ${preset.toUpperCase()}`,
-    ``,
-    blocks.join("\n\n---\n\n")
-  ].join("\n");
-}
-
-/* =========================
-   YOUTUBE PACK (no technical terms)
-========================= */
-function ytTitleVariants(topic, kind){
-  const A = kind==="problem"
-    ? `You’re Not Lazy — You’re Stuck in ${topic}`
-    : `How to Break ${topic} (Without Forcing Motivation)`;
-  const B = kind==="problem"
-    ? `This is Why ${topic} Keeps Winning`
-    : `The Simple System That Fixes ${topic}`;
-  return { A, B };
-}
-function ytDescription(topic, kind){
-  const base = kind==="problem"
-    ? [
-      `If ${topic} keeps looping in your head, this video will feel uncomfortably accurate.`,
-      ``,
-      `You’ll see the pattern, why it happens, and what it silently costs.`,
-      ``,
-      `If you want the fix, watch the next video in the series (Solution).`,
-      ``,
-      `👇 Comment one sentence: what you’re stuck on right now.`,
-      ``,
-      `#decide #focus #mindset`
-    ]
-    : [
-      `This is the solution video for ${topic}.`,
-      ``,
-      `No hype. Just a repeatable method you can use even on low-energy days.`,
-      ``,
-      `Try it once today and come back with results.`,
-      ``,
-      `👇 Comment: “DONE” after you apply it.`,
-      ``,
-      `#decide #habits #focus`
-    ];
-  return base.join("\n");
-}
-function ytPinnedComment(topic, kind){
-  const A = kind==="problem"
-    ? `What’s the ONE decision you’re avoiding right now? Reply with a single sentence.`
-    : `Pick ONE step from the video and do it today. Reply “DONE” when finished.`;
-  const B = kind==="problem"
-    ? `If I made a Part 2 (Solution), what should it solve first?`
-    : `Want a Part 3 with examples? Comment your situation (1–2 lines).`;
-  return { A, B };
-}
-function ytCommunityPost(topic, kind){
-  const A = kind==="problem"
-    ? `Quick poll: when ${topic} hits, what do you do?\n\nA) Overthink\nB) Distract myself\nC) Ask someone\nD) Take action anyway`
-    : `Today’s challenge: apply the solution to ${topic}.\n\nReply with:\n✅ What you did\n⏱️ How long it took\n🎯 What changed`;
-  const B = kind==="problem"
-    ? `Be honest — what’s the real cost of ${topic} in your life right now?`
-    : `If you could automate ONE habit to beat ${topic}, what would it be?`;
-  return { A, B };
-}
-function youtubePackText(topic, kind){
-  const titles = ytTitleVariants(topic, kind);
-  const pins = ytPinnedComment(topic, kind);
-  const comm = ytCommunityPost(topic, kind);
-  return [
-    `TYPE: ${kind.toUpperCase()}`,
-    ``,
-    `TITLE A: ${titles.A}`,
-    `TITLE B: ${titles.B}`,
-    ``,
-    `DESCRIPTION:`,
-    ytDescription(topic, kind),
-    ``,
-    `PINNED COMMENT A: ${pins.A}`,
-    `PINNED COMMENT B: ${pins.B}`,
-    ``,
-    `COMMUNITY POST A:`,
-    comm.A,
-    ``,
-    `COMMUNITY POST B:`,
-    comm.B
-  ].join("\n");
-}
-
-/* =========================
-   EDITOR CHECKLIST (PDF script usage)
-========================= */
-function buildChecklist(topic){
-  return [
-    `EDITOR CHECKLIST — ${topic}`,
-    ``,
-    `1) Use the GOLD SCRIPT as the voiceover track.`,
-    `2) Follow VISUAL PROMPT PACK scene-by-scene.`,
-    `3) Typography rules:`,
-    `   - CAPS words go full-screen`,
-    `   - [brackets] appear slightly delayed`,
-    `   - single-word lines hold longer`,
-    `   - "…" adds a 0.5 second pause`,
-    `4) Add pattern interrupts every 30–45s (small zoom/shift/beat).`,
-    `5) Keep background clean: dark studio only, no stock footage.`,
-    `6) Add subtle room tone + bass hits on punchlines.`,
-    `7) Export 2 thumbnails: one “Problem”, one “Solution”.`,
-    `8) Upload with Title A first; A/B test with Title B after 24h.`,
-    `9) Pin comment A first; swap to B if engagement drops.`,
-    `10) Community post: publish A at upload time, B the next day.`,
-  ].join("\n");
-}
-
-/* =========================
-   PDF EXPORT (includes script + visuals + checklist)
-========================= */
-function paintBg(doc){
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
-  doc.setFillColor(5,5,5);
-  doc.rect(0,0,w,h,"F");
-}
-function pdfWatermark(doc, text){
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
-  try{ doc.setGState?.(new doc.GState({opacity:0.08})); }catch{}
-  doc.setTextColor(255,103,31);
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(34);
-  doc.text(text, w/2, h/2, {align:"center", angle:35});
-}
-function writeWrapped(doc, text, x, y, maxW, lineH=12){
-  doc.setFont("courier","normal");
-  const lines = doc.splitTextToSize(String(text||""), maxW);
-  for(const line of lines){
-    const h = doc.internal.pageSize.getHeight();
-    if(y > h-60){
-      doc.addPage();
-      paintBg(doc);
-      y = 54;
-    }
-    doc.text(line, x, y);
-    y += lineH;
-  }
-  return y;
-}
-function addFooter(doc, brand, sid, pageNum, total){
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(9);
-  doc.setTextColor(170);
-  doc.text(`${brand} • ${sid}`, 44, h-18);
-  doc.text(`Page ${pageNum}/${total}`, w-44, h-18, {align:"right"});
-}
-
-function exportPackagePdf({topic, kind, gold, visualPack, ytPack, checklist, watermarkText}){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:"pt", format:"a4"});
-  const w = doc.internal.pageSize.getWidth();
-  const margin = 44;
-
-  paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setTextColor(255,103,31);
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(22);
-  doc.text("SCRIPT PACKAGE", margin, 64);
-
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(16);
-  doc.text(topic, margin, 108);
-
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(10);
-  doc.setTextColor(180);
-  doc.text(`Type: ${kind.toUpperCase()}`, margin, 130);
-  doc.text(`Session: ${SID}`, margin, 146);
-  doc.text(`Generated: ${nowISO()}`, margin, 162);
-
-  // GOLD
-  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
-  doc.text(`GOLD SCRIPT — ${kind.toUpperCase()}`, margin, 60);
-  doc.setFontSize(10); doc.setTextColor(220);
-  let y = 86;
-  y = writeWrapped(doc, goldToText(gold), margin, y, w - margin*2, 12);
-
-  // VISUAL
-  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
-  doc.text(`VISUAL PROMPT PACK — ${kind.toUpperCase()}`, margin, 60);
-  doc.setFontSize(10); doc.setTextColor(220);
-  y = 86;
-  y = writeWrapped(doc, visualPack, margin, y, w - margin*2, 12);
-
-  // YT
-  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
-  doc.text(`YOUTUBE PACK — ${kind.toUpperCase()} (A/B)`, margin, 60);
-  doc.setFontSize(10); doc.setTextColor(220);
-  y = 86;
-  y = writeWrapped(doc, ytPack, margin, y, w - margin*2, 12);
-
-  // CHECKLIST
-  doc.addPage(); paintBg(doc); pdfWatermark(doc, watermarkText);
-  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(255,255,255);
-  doc.text(`EDITOR CHECKLIST`, margin, 60);
-  doc.setFontSize(10); doc.setTextColor(220);
-  y = 86;
-  y = writeWrapped(doc, checklist, margin, y, w - margin*2, 12);
-
-  const total = doc.getNumberOfPages();
-  for(let p=1;p<=total;p++){
-    doc.setPage(p);
-    addFooter(doc, "DECIDE CREATOR TOOL", SID, p, total);
   }
 
-  doc.save(`${topic.replace(/\s+/g,"_")}_${kind}_PACKAGE.pdf`);
-}
-
-/* =========================
-   STATE + GENERATE
-========================= */
-let LAST = {
-  topic:"",
-  watermark:"",
-  goldProblem:null,
-  goldSolution:null,
-  visualProblem:"",
-  visualSolution:"",
-  ytProblem:"",
-  ytSolution:"",
-  checklist:""
-};
-
-function generate(){
-  const topic = cleanText($("topic").value) || "Untitled Topic";
-  const wm = cleanText($("watermark").value) || "DECIDE.ENGINE • INTERNAL";
-  const p = cleanText($("problem").value);
-  const s = cleanText($("solution").value);
-  const preset = $("visualPreset").value;
-
-  if(!p && !s){ toast("Paste problem/solution text"); return; }
-
-  $("lenKpi").textContent = `Text: ${wordCount(p)+wordCount(s)} words`;
-
-  const goldProblem = buildGold({topic, mode:"problem", sourceText: p || topic});
-  const goldSolution = buildGold({topic, mode:"solution", sourceText: s || topic});
-
-  const vp = buildVisualPack(goldProblem, preset);
-  const vs = buildVisualPack(goldSolution, preset);
-
-  const ytP = youtubePackText(topic, "problem");
-  const ytS = youtubePackText(topic, "solution");
-  const cl = buildChecklist(topic);
-
-  LAST = {
-    topic, watermark: wm,
-    goldProblem, goldSolution,
-    visualProblem: vp,
-    visualSolution: vs,
-    ytProblem: ytP,
-    ytSolution: ytS,
-    checklist: cl
-  };
-
-  $("outProblem").textContent = goldToText(goldProblem);
-  $("outSolution").textContent = goldToText(goldSolution);
-  $("visualProblem").textContent = vp;
-  $("visualSolution").textContent = vs;
-  $("ytProblem").textContent = ytP;
-  $("ytSolution").textContent = ytS;
-  $("checklist").textContent = cl;
-
-  toast("Generated ✅");
-  saveDraft();
-}
-
-$("gen").onclick = generate;
-
-/* =========================
-   COPY BUTTONS
-========================= */
-$("copyAll").onclick = async ()=>{
-  if(!LAST.goldProblem) return toast("Generate first");
-  await copy([
-    `TOPIC: ${LAST.topic}`,
-    `SID: ${SID}`,
-    ``,
-    `=== YOUTUBE PACK — PROBLEM ===`,
-    LAST.ytProblem,
-    ``,
-    `=== YOUTUBE PACK — SOLUTION ===`,
-    LAST.ytSolution
-  ].join("\n"));
-};
-
-$("copyScriptProblem").onclick = async ()=> LAST.goldProblem ? copy(goldToText(LAST.goldProblem)) : toast("Generate first");
-$("copyScriptSolution").onclick = async ()=> LAST.goldSolution ? copy(goldToText(LAST.goldSolution)) : toast("Generate first");
-$("copyYTProblem").onclick = async ()=> LAST.ytProblem ? copy(LAST.ytProblem) : toast("Generate first");
-$("copyYTSolution").onclick = async ()=> LAST.ytSolution ? copy(LAST.ytSolution) : toast("Generate first");
-
-function copyVisualProblem(){ return LAST.visualProblem ? copy(LAST.visualProblem) : toast("Generate first"); }
-function copyVisualSolution(){ return LAST.visualSolution ? copy(LAST.visualSolution) : toast("Generate first"); }
-
-$("copyVisualProblem").onclick = copyVisualProblem;
-$("copyVisualProblem2").onclick = copyVisualProblem;
-$("copyVisualSolution").onclick = copyVisualSolution;
-$("copyVisualSolution2").onclick = copyVisualSolution;
-
-$("copyChecklist").onclick = async ()=> LAST.checklist ? copy(LAST.checklist) : toast("Generate first");
-
-/* =========================
-   PDF BUTTONS
-========================= */
-$("pdfProblem").onclick = ()=>{
-  if(!LAST.goldProblem) return toast("Generate first");
-  exportPackagePdf({
-    topic: LAST.topic,
-    kind: "problem",
-    gold: LAST.goldProblem,
-    visualPack: LAST.visualProblem,
-    ytPack: LAST.ytProblem,
-    checklist: LAST.checklist,
-    watermarkText: LAST.watermark
-  });
-};
-
-$("pdfSolution").onclick = ()=>{
-  if(!LAST.goldSolution) return toast("Generate first");
-  exportPackagePdf({
-    topic: LAST.topic,
-    kind: "solution",
-    gold: LAST.goldSolution,
-    visualPack: LAST.visualSolution,
-    ytPack: LAST.ytSolution,
-    checklist: LAST.checklist,
-    watermarkText: LAST.watermark
-  });
-};
-
-$("pdfCombined").onclick = ()=>{
-  if(!LAST.goldProblem) return toast("Generate first");
-  // Combined = export two packages quickly (simple + reliable)
-  $("pdfProblem").click();
-  setTimeout(()=> $("pdfSolution").click(), 350);
-};
-
-/* =========================
-   RESET
-========================= */
-$("reset").onclick = ()=>{
-  $("topic").value="";
-  $("problem").value="";
-  $("solution").value="";
-  $("outProblem").textContent="(generate to view)";
-  $("outSolution").textContent="(generate to view)";
-  $("visualProblem").textContent="(generate to view)";
-  $("visualSolution").textContent="(generate to view)";
-  $("ytProblem").textContent="(generate to view)";
-  $("ytSolution").textContent="(generate to view)";
-  $("checklist").textContent="(generate to view)";
-  LAST = { topic:"", watermark:"", goldProblem:null, goldSolution:null, visualProblem:"", visualSolution:"", ytProblem:"", ytSolution:"", checklist:"" };
-  $("lenKpi").textContent="Text: —";
-  $("healthKpi").textContent="Script: —";
-  toast("Reset");
-  saveDraft();
-};
-
-/* =========================
-   AUTOSAVE
-========================= */
-const STORAGE_KEY = "decide_creator_tool_v2_gold_visual";
-const AUTOSAVE_FIELDS = ["topic","watermark","channelName","playlist","visualPreset","problem","solution"];
-
-function readField(id) {
-  const el = document.getElementById(id);
-  if (!el) return null;
-  if (el.tagName === "SELECT") return el.value;
-  return el.value;
-}
-function writeField(id, val) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (el.tagName === "SELECT") el.value = val ?? "";
-  else el.value = val ?? "";
-}
-function loadSavedDraft() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    AUTOSAVE_FIELDS.forEach((k) => writeField(k, data[k]));
-    if (data && (data.topic || data.problem || data.solution)) toast("Draft restored ✅");
-  } catch (e) {
-    console.warn("Draft restore failed", e);
+  function setStatus(text){
+    $("statusPill").textContent = text;
   }
-}
-let saveTimer = null;
-function scheduleSaveDraft() {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveDraft, 300);
-}
-function saveDraft() {
-  try {
-    const payload = { updated_at: new Date().toISOString() };
-    AUTOSAVE_FIELDS.forEach((k) => (payload[k] = readField(k)));
+
+  function generate(){
+    const ctx = getCtx();
+
+    $("notebookPrompt").value = buildNotebookPrompt(ctx.topic, "PROBLEM (diagnosis + failure map)", ctx.audience);
+
+    $("problemScript").textContent = buildProblemScript(ctx);
+    $("solutionScript").textContent = buildSolutionScript(ctx);
+    $("ytPost").textContent = buildYTPost(ctx);
+    $("visualGuide").textContent = buildVisualGuide(ctx);
+    $("abPosts").textContent = buildABPosts(ctx);
+
+    setStatus("generated " + nowISO().slice(0,19).replace("T"," "));
+    persist();
+  }
+
+  function persist(){
+    const ctx = getCtx();
+    const payload = {
+      savedAt: nowISO(),
+      ...ctx,
+      rawBullets: $("bullets").value,
+      notebookPrompt: $("notebookPrompt").value,
+      outputs: {
+        problemScript: $("problemScript").textContent,
+        solutionScript: $("solutionScript").textContent,
+        ytPost: $("ytPost").textContent,
+        visualGuide: $("visualGuide").textContent,
+        abPosts: $("abPosts").textContent
+      }
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch (e) { console.warn("Draft save failed", e); }
-}
-function clearDraft() {
-  localStorage.removeItem(STORAGE_KEY);
-  AUTOSAVE_FIELDS.forEach((k) => writeField(k, ""));
-  $("outProblem").textContent="(generate to view)";
-  $("outSolution").textContent="(generate to view)";
-  $("visualProblem").textContent="(generate to view)";
-  $("visualSolution").textContent="(generate to view)";
-  $("ytProblem").textContent="(generate to view)";
-  $("ytSolution").textContent="(generate to view)";
-  $("checklist").textContent="(generate to view)";
-  LAST = { topic:"", watermark:"", goldProblem:null, goldSolution:null, visualProblem:"", visualSolution:"", ytProblem:"", ytSolution:"", checklist:"" };
-  $("lenKpi").textContent="Text: —";
-  $("healthKpi").textContent="Script: —";
-  toast("Saved draft cleared");
-  saveDraft();
-}
-function initAutosave() {
-  AUTOSAVE_FIELDS.forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("input", scheduleSaveDraft);
-    el.addEventListener("change", scheduleSaveDraft);
+  }
+
+  function load(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw){ setStatus("no saved data"); return; }
+    const data = JSON.parse(raw);
+
+    $("courseName").value = data.courseName || "";
+    $("moduleNo").value = data.moduleNo || "";
+    $("topic").value = data.topic || "";
+    $("audience").value = data.audience || "";
+    $("tone").value = data.tone || "operator";
+    $("bullets").value = data.rawBullets || "";
+
+    $("notebookPrompt").value = data.notebookPrompt || "";
+    $("problemScript").textContent = data.outputs?.problemScript || "";
+    $("solutionScript").textContent = data.outputs?.solutionScript || "";
+    $("ytPost").textContent = data.outputs?.ytPost || "";
+    $("visualGuide").textContent = data.outputs?.visualGuide || "";
+    $("abPosts").textContent = data.outputs?.abPosts || "";
+
+    setStatus("loaded " + (data.savedAt ? data.savedAt.slice(0,19).replace("T"," ") : ""));
+  }
+
+  function resetAll(){
+    if(!confirm("Reset all fields and clear saved data?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    ["courseName","moduleNo","topic","audience","bullets","notebookPrompt"].forEach(id => $(id).value = "");
+    ["problemScript","solutionScript","ytPost","visualGuide","abPosts"].forEach(id => $(id).textContent = "");
+    setStatus("reset");
+  }
+
+  async function copyFrom(id){
+    const text = $(id).value ?? $(id).textContent ?? "";
+    try{
+      await navigator.clipboard.writeText(text);
+      setStatus("copied " + id);
+    }catch(e){
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setStatus("copied (fallback) " + id);
+    }
+  }
+
+  function exportJSON(){
+    const raw = localStorage.getItem(STORAGE_KEY) || JSON.stringify({ note:"nothing saved yet" });
+    const blob = new Blob([raw], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "decide_engine_generator_export.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus("exported json");
+  }
+
+  function importJSON(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = JSON.parse(reader.result);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        load();
+        setStatus("imported json");
+      }catch(e){
+        alert("Invalid JSON file.");
+        setStatus("import failed");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // wire up
+  $("generateBtn").addEventListener("click", generate);
+  $("saveBtn").addEventListener("click", () => { persist(); setStatus("saved " + nowISO().slice(0,19).replace("T"," ")); });
+  $("loadBtn").addEventListener("click", load);
+  $("resetBtn").addEventListener("click", resetAll);
+
+  $("copyPromptBtn").addEventListener("click", () => copyFrom("notebookPrompt"));
+
+  document.querySelectorAll("[data-copy]").forEach(btn=>{
+    btn.addEventListener("click", () => copyFrom(btn.getAttribute("data-copy")));
   });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") saveDraft();
+
+  $("exportBtn").addEventListener("click", exportJSON);
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(f) importJSON(f);
+    e.target.value = "";
   });
-  const btn = document.getElementById("clearSaved");
-  if (btn) btn.addEventListener("click", clearDraft);
-  saveDraft();
-}
-window.addEventListener("load", () => {
-  loadSavedDraft();
-  initAutosave();
-});
+
+  // autosave on change
+  ["courseName","moduleNo","topic","audience","tone","bullets"].forEach(id=>{
+    $(id).addEventListener("input", () => { persist(); setStatus("autosaved"); });
+    $(id).addEventListener("change", () => { persist(); setStatus("autosaved"); });
+  });
+
+  // initial
+  load();
+  if(!$("notebookPrompt").value){
+    const ctx = getCtx();
+    $("notebookPrompt").value = buildNotebookPrompt(ctx.topic || "{TOPIC}", "PROBLEM (diagnosis + failure map)", ctx.audience || "{AUDIENCE}");
+  }
+})();
 </script>
 </body>
-            </html>
+</html>
