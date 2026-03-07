@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>The Making of viadecide — Interactive Case Study</title>
+  <style>
+    :root {
+      --bg:#0b0d10; --panel:#12161c; --text:#e8eef7; --muted:#a8b3c2;
+      --line:#243041; --acc:#7dd3fc; --green:#4ade80; --amber:#fbbf24;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:var(--bg); color:var(--text); min-height:100vh;
+      display:flex; flex-direction:column;
+    }
+
+    /* ── Header ── */
+    #site-header {
+      padding:12px 20px; border-bottom:1px solid var(--line);
+      background:rgba(11,13,16,.92); backdrop-filter:blur(8px);
+      position:sticky; top:0; z-index:20;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    #site-header .brand { font-size:13px; font-weight:700; color:var(--acc); letter-spacing:.3px; }
+    #site-header .scenario-title { font-size:13px; color:var(--muted); }
+    #progress-dots { display:flex; gap:6px; align-items:center; }
+    .dot {
+      width:8px; height:8px; border-radius:50%;
+      border:1px solid var(--line); background:transparent;
+      transition: background .3s, border-color .3s;
+    }
+    .dot.active { background:var(--acc); border-color:var(--acc); }
+    .dot.visited { background:var(--line); border-color:var(--muted); }
+
+    /* ── Main layout ── */
+    main {
+      flex:1; display:flex; flex-direction:column;
+      align-items:center; padding:24px 20px 60px;
+    }
+
+    /* ── Player wrap ── */
+    #player-wrap {
+      position:relative; width:100%; max-width:900px;
+      border-radius:16px; overflow:hidden; border:1px solid var(--line);
+      background:#000;
+    }
+    #player-aspect { padding-top:56.25%; /* 16:9 */ }
+    #yt-player, #placeholder-scene {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+    }
+    #yt-player { display:none; }
+
+    /* Placeholder scene (before real videos exist) */
+    #placeholder-scene {
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      background:#0a0e14; gap:8px; text-align:center; padding:20px;
+    }
+    #placeholder-scene .scene-chip {
+      font-size:11px; text-transform:uppercase; letter-spacing:.8px;
+      color:var(--muted); border:1px solid var(--line);
+      padding:4px 10px; border-radius:999px;
+    }
+    #placeholder-scene .scene-name {
+      font-size:22px; font-weight:700; color:var(--text);
+    }
+    #placeholder-scene .replace-note {
+      font-size:12px; color:#4a5568; margin-top:8px;
+      font-family: monospace;
+    }
+    #placeholder-scene .fake-progress {
+      margin-top:20px; display:flex; gap:4px; align-items:center;
+    }
+    .fp-bar {
+      height:3px; border-radius:2px; background:var(--line);
+    }
+    .fp-bar.filled { background:var(--acc); }
+
+    /* ── Choice overlay ── */
+    #choice-overlay {
+      position:absolute; bottom:0; left:0; right:0;
+      background:linear-gradient(to top, rgba(5,8,12,.97) 70%, transparent 100%);
+      padding:20px 24px 24px;
+      opacity:0; pointer-events:none;
+      transition: opacity .35s ease;
+      z-index:10;
+    }
+    #choice-overlay.visible { opacity:1; pointer-events:all; }
+    #choice-prompt {
+      font-size:12px; text-transform:uppercase; letter-spacing:.8px;
+      color:var(--acc); margin-bottom:10px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    #countdown-wrap {
+      display:flex; align-items:center; gap:8px;
+      font-size:12px; color:var(--muted);
+    }
+    #countdown-ring {
+      width:28px; height:28px; border-radius:50%;
+      background: conic-gradient(var(--acc) 0deg, var(--line) 0deg);
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:700; color:var(--text);
+      transition: background .5s;
+    }
+    .choice-buttons { display:flex; flex-direction:column; gap:8px; }
+    .choice-btn {
+      display:flex; align-items:center; gap:12px;
+      background:rgba(18,22,28,.85); border:1px solid var(--line);
+      border-radius:12px; padding:12px 16px;
+      cursor:pointer; color:var(--text);
+      font-size:14px; text-align:left;
+      transition: border-color .2s, background .2s;
+      width:100%;
+    }
+    .choice-btn:hover, .choice-btn:focus {
+      border-color:var(--acc);
+      background:rgba(125,211,252,.08);
+      outline:none;
+    }
+    .key-badge {
+      width:22px; height:22px; flex-shrink:0;
+      border:1px solid var(--line); border-radius:6px;
+      background:#0f1318; font-size:11px; font-weight:700;
+      display:flex; align-items:center; justify-content:center;
+      color:var(--acc);
+    }
+
+    /* ── Breadcrumb ── */
+    #breadcrumb {
+      width:100%; max-width:900px; margin-top:12px;
+      display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+    }
+    .crumb {
+      font-size:11px; color:var(--muted);
+      display:flex; align-items:center; gap:4px;
+    }
+    .crumb .crumb-label {
+      padding:3px 8px; border-radius:999px;
+      background:var(--panel); border:1px solid var(--line);
+    }
+    .crumb .crumb-arrow { color:var(--line); }
+
+    /* ── End screen ── */
+    #end-screen {
+      display:none;
+      position:fixed; inset:0; z-index:50;
+      background:rgba(5,8,12,.97);
+      align-items:center; justify-content:center;
+      padding:20px;
+    }
+    #end-screen.visible { display:flex; }
+    .end-card {
+      background:var(--panel); border:1px solid var(--line);
+      border-radius:20px; padding:32px 36px;
+      max-width:540px; width:100%;
+    }
+    .end-card .path-trail {
+      font-size:11px; color:var(--muted); font-family:monospace;
+      margin-bottom:16px;
+    }
+    .end-card .outcome-badge {
+      display:inline-flex; padding:5px 12px; border-radius:999px;
+      background:rgba(125,211,252,.1); border:1px solid rgba(125,211,252,.3);
+      font-size:11px; color:var(--acc); letter-spacing:.5px; margin-bottom:6px;
+    }
+    .end-card h2 { font-size:26px; font-weight:800; margin-bottom:4px; }
+    .end-card .archetype { font-size:14px; color:var(--muted); margin-bottom:16px; font-style:italic; }
+    .end-card .outcome-body { font-size:14px; line-height:1.6; color:var(--text); margin-bottom:16px; }
+    .end-card .decision-lens {
+      background:#0f1318; border:1px solid var(--line); border-radius:12px;
+      padding:12px 16px; font-size:13px; line-height:1.5;
+    }
+    .end-card .decision-lens .lens-label {
+      font-size:11px; text-transform:uppercase; letter-spacing:.6px;
+      color:var(--acc); margin-bottom:4px;
+    }
+    .end-card .end-actions {
+      margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .end-btn {
+      padding:10px 18px; border-radius:12px; font-size:13px;
+      font-weight:600; cursor:pointer; border:1px solid var(--line);
+      background:#0f1318; color:var(--text); transition: border-color .2s;
+    }
+    .end-btn:hover { border-color:#365071; }
+    .end-btn.primary {
+      border-color:#2b6b83;
+      background:linear-gradient(180deg,rgba(125,211,252,.14),rgba(125,211,252,.04));
+    }
+
+    /* ── Platform info ── */
+    #platform-note {
+      width:100%; max-width:900px; margin-top:24px;
+      background:var(--panel); border:1px solid var(--line);
+      border-radius:14px; padding:16px 20px;
+    }
+    #platform-note h3 { font-size:13px; color:var(--acc); margin-bottom:8px; }
+    #platform-note p { font-size:12px; color:var(--muted); line-height:1.6; margin-bottom:6px; }
+    #platform-note code {
+      background:#0f1318; border:1px solid var(--line);
+      border-radius:6px; padding:2px 6px; font-size:11px;
+    }
+    .yt-mode-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 8px; border-radius:999px;
+      border:1px solid #3d2d2d; background:rgba(251,191,36,.06);
+      font-size:11px; color:var(--amber);
+    }
+    .web-mode-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 8px; border-radius:999px;
+      border:1px solid #1a3a2a; background:rgba(74,222,128,.06);
+      font-size:11px; color:var(--green);
+    }
+
+    /* ── YT cards instructions panel ── */
+    #yt-cards-panel {
+      width:100%; max-width:900px; margin-top:14px;
+      background:var(--panel); border:1px solid var(--line);
+      border-radius:14px; padding:16px 20px; display:none;
+    }
+    #yt-cards-panel.show { display:block; }
+    #yt-cards-panel h3 { font-size:13px; margin-bottom:10px; }
+    .card-instruction {
+      background:#0f1318; border:1px solid var(--line); border-radius:10px;
+      padding:10px 14px; margin-bottom:8px; font-size:12px; color:var(--muted);
+      display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+    }
+    .card-instruction .scene-ref { color:var(--text); font-weight:600; }
+    .card-instruction .timestamp { color:var(--acc); font-family:monospace; font-size:11px; white-space:nowrap; }
+
+    /* ── Responsive ── */
+    @media (max-width:600px) {
+      #site-header .scenario-title { display:none; }
+      .end-card { padding:20px; }
+      .end-card h2 { font-size:20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header id="site-header">
+  <span class="brand">decide.engine</span>
+  <span class="scenario-title" id="scenario-title-header"></span>
+  <div id="progress-dots"></div>
+</header>
+
+<!-- ── Main ── -->
+<main>
+
+  <!-- Player -->
+  <div id="player-wrap">
+    <div id="player-aspect">
+
+      <!-- YouTube IFrame target -->
+      <div id="yt-player"></div>
+
+      <!-- Placeholder (shown when videoId is PLACEHOLDER or not set) -->
+      <div id="placeholder-scene">
+        <span class="scene-chip">Scene</span>
+        <div class="scene-name" id="ph-scene-name">Loading…</div>
+        <div class="replace-note" id="ph-video-id">videoId: —</div>
+        <div class="fake-progress" id="ph-progress"></div>
+      </div>
+
+      <!-- Choice overlay (absolute, over video/placeholder) -->
+      <div id="choice-overlay">
+        <div id="choice-prompt">
+          <span>What would you do?</span>
+          <div id="countdown-wrap">
+            <div id="countdown-ring">—</div>
+            <span>sec</span>
+          </div>
+        </div>
+        <div class="choice-buttons" id="choice-buttons"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Breadcrumb -->
+  <div id="breadcrumb"></div>
+
+  <!-- Platform note -->
+  <div id="platform-note">
+    <h3>Dual-platform branching</h3>
+    <p>
+      <span class="web-mode-badge">● Website</span>&nbsp;
+      This page — JavaScript handles choices, countdown, and decision tracking.
+      Swap <code>PLACEHOLDER_YT_ID</code> in the scenario JSON with a real YouTube video ID to go live.
+    </p>
+    <p>
+      <span class="yt-mode-badge">▶ YouTube</span>&nbsp;
+      Same videos, same choice timestamps. Add <strong>YouTube Cards</strong> at the
+      <code>choiceAt</code> second mark in each video, pointing to the next scene's video.
+      The "choose screen" segment baked into each video acts as the visual cue on both platforms.
+    </p>
+    <p style="margin-top:8px;">
+      <a href="#" id="toggle-yt-cards" style="color:var(--acc);font-size:12px;text-decoration:none;">
+        Show YouTube Cards setup instructions ↓
+      </a>
+    </p>
+  </div>
+
+  <!-- YT Cards instructions (generated dynamically) -->
+  <div id="yt-cards-panel">
+    <h3>YouTube Cards — setup guide for each video</h3>
+    <div id="yt-cards-list"></div>
+  </div>
+
+</main>
+
+<!-- ── End screen ── -->
+<div id="end-screen">
+  <div class="end-card">
+    <div class="path-trail" id="end-path-trail"></div>
+    <div class="outcome-badge">Decision OS Bootcamp — Your Profile</div>
+    <h2 id="end-outcome-title"></h2>
+    <div class="archetype" id="end-outcome-archetype"></div>
+    <div class="outcome-body" id="end-outcome-body"></div>
+    <div class="decision-lens">
+      <div class="lens-label">Decision OS Lens</div>
+      <div id="end-outcome-lens"></div>
+    </div>
+    <div class="end-actions">
+      <button class="end-btn" onclick="resetAll()">Watch Again</button>
+      <button class="end-btn primary" onclick="window.open('https://decide.engine/cohort','_blank')">
+        Join the Cohort →
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   SCENARIO DATA
+   — Edit this JSON to build your course's branching tree.
+   — videoId: YouTube video ID (11-char string).
+     Use "PLACEHOLDER" while real videos don't exist yet.
+   — choiceAt: time in seconds when choices should appear.
+     null = let the video play to end, then show outcome.
+   — startAt: seek to this second when loading the scene.
+   — outcome: key into SCENARIO.outcomes (terminal scenes only).
+   ═══════════════════════════════════════════════════════ */
+
+const SCENARIO = {
+  title: "The Making of viadecide",
+  tagline: "You're a founder building a decision tool. Key moments — what do you do?",
+  startScene: "intro",
+
+  /* Depth = max number of decisions in one path */
+  depth: 3,
+
+  scenes: {
+    intro: {
+      videoId: "PLACEHOLDER",
+      startAt: 0,
+      choiceAt: 25,
+      label: "The Origin",
+      context: "You have an idea for a tool that helps people make better decisions. You've been building it solo for a week. The question isn't whether to build — it's WHO you're building it for.",
+      choices: [
+        {
+          label: "Build for yourself first — solve your own problem, dog-food it",
+          next: "solo",
+          tag: "operator"
+        },
+        {
+          label: "Build for an audience — find the customer segment first",
+          next: "audience",
+          tag: "adapter"
+        }
+      ]
+    },
+
+    solo: {
+      videoId: "PLACEHOLDER",
+      startAt: 0,
+      choiceAt: 30,
+      label: "Solo operator mode",
+      context: "You've been building for yourself. The tool works well for your workflow. A friend wants early access — but the UI is rough and half the features are stubs.",
+      choices: [
+        {
+          label: "Ship it now — share with friend, gather real feedback",
+          next: "end-operator",
+          tag: "operator"
+        },
+        {
+          label: "Polish it first — you only get one first impression",
+          next: "end-optimizer",
+          tag: "optimizer"
+        }
+      ]
+    },
+
+    audience: {
+      videoId: "PLACEHOLDER",
+      startAt: 0,
+      choiceAt: 28,
+      label: "Audience-first mode",
+      context: "You've been talking to potential users. Two types emerged: solo creators who want scripts, and teams who want decision frameworks. Different features, different pricing, different messaging.",
+      choices: [
+        {
+          label: "Pick the solo creator — smaller, clearer, faster to ship",
+          next: "end-focus",
+          tag: "focus"
+        },
+        {
+          label: "Build for both — more addressable market",
+          next: "end-spread",
+          tag: "spread"
+        }
+      ]
+    },
+
+    "end-operator": {
+      videoId: "PLACEHOLDER",
+      startAt: 0,
+      choiceAt: null,
+      label: "You shipped early",
+      outcome: "operator"
+    },
+
+    "end-optimizer": {
+      videoId: "PLACEHOLDER",
+      startAt: 0,
+      choiceAt: null,
+      label: "You polished first",
+      outcome: "optimizer"
+    },
+
+    "end-focus": {
+      videoId: "PLACEHOLDER",
+      startAt: 0,
+      choiceAt: null,
+      label: "You focused on creators",
+      outcome: "focus"
+    },
+
+    "end-spread": {
+      videoId: "PLACEHOLDER",
+      startAt: 0,
+      choiceAt: null,
+      label: "You tried to serve both",
+      outcome: "spread"
+    }
+  },
+
+  outcomes: {
+    operator: {
+      title: "The Operator",
+      archetype: "Ship under constraint. Validate the system.",
+      body: "You shipped before it was ready, and that was the right call. Shipping early is not cutting corners — it's installing a feedback loop. The viadecide team did exactly this. The first version was rough; the feedback loop shaped everything after it.",
+      decisionOsLens: "Reversibility Framework: move fast on reversible decisions, slow on irreversible ones. Shipping software is reversible. Waiting for perfect is not — it costs you the feedback you need."
+    },
+    optimizer: {
+      title: "The Optimizer",
+      archetype: "Tune before you ship.",
+      body: "You prioritized the first impression over the first signal. That's a common founder trap: optimizing a system you haven't stress-tested yet. Polish without feedback is a guess about what matters. The gap between 'good enough to learn from' and 'ready to ship' is almost always smaller than it feels.",
+      decisionOsLens: "Feedback Loop Protocol: feedback lag distorts learning. The longer you delay external input, the more confident you become in assumptions that may be wrong."
+    },
+    focus: {
+      title: "The Focus Operator",
+      archetype: "Constraint is a design decision.",
+      body: "You narrowed the target and gained clarity. Choosing one segment isn't limiting — it's the mechanism that makes fast iteration possible. viadecide's sharpest versions were always built for a specific person doing a specific job.",
+      decisionOsLens: "Constraint Stack: every constraint forces a prioritization. When you pick a segment, you're also deciding what not to build. That's not limitation — it's leverage."
+    },
+    spread: {
+      title: "The Spreader",
+      archetype: "More surface area, more friction.",
+      body: "Building for two segments at once doubles your assumptions, your edge cases, and your messaging complexity. Neither segment gets the best version. viadecide tried this — the tool that tried to do everything was the version nobody recommended.",
+      decisionOsLens: "Failure Mode Analysis: 'serve everyone' is a failure mode disguised as ambition. The failure isn't the intention — it's the diffusion of signal. Two audiences give you two conflicting feedback loops."
+    }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════ */
+let state = {
+  currentScene: SCENARIO.startScene,
+  pathTaken: [],      // scene IDs
+  tagsTaken: [],      // choice tags
+  overlayShown: false,
+  pollId: null,
+  countdownId: null,
+  player: null,
+  ytReady: false,
+  phTimerId: null,    // for placeholder countdown simulation
+};
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════ */
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("scenario-title-header").textContent = SCENARIO.title;
+  buildProgressDots();
+  buildYtCardsInstructions();
+  document.getElementById("toggle-yt-cards").addEventListener("click", e => {
+    e.preventDefault();
+    const panel = document.getElementById("yt-cards-panel");
+    panel.classList.toggle("show");
+    e.target.textContent = panel.classList.contains("show")
+      ? "Hide YouTube Cards setup ↑"
+      : "Show YouTube Cards setup instructions ↓";
+  });
+  document.addEventListener("keydown", handleKey);
+  loadScene(SCENARIO.startScene);
+  loadYouTubeAPI();
+});
+
+function loadYouTubeAPI() {
+  if (window.YT) return;
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+}
+
+/* Called by YouTube IFrame API when ready */
+window.onYouTubeIframeAPIReady = function() {
+  state.ytReady = true;
+  const scene = SCENARIO.scenes[state.currentScene];
+  if (scene && scene.videoId && scene.videoId !== "PLACEHOLDER") {
+    createYTPlayer(scene);
+  }
+};
+
+/* ═══════════════════════════════════════════════════════
+   SCENE LOADING
+   ═══════════════════════════════════════════════════════ */
+function loadScene(sceneId) {
+  clearTimers();
+  state.currentScene = sceneId;
+  state.overlayShown = false;
+
+  const scene = SCENARIO.scenes[sceneId];
+  if (!scene) { console.error("Scene not found:", sceneId); return; }
+
+  // Add to path (avoid duplicate on reset)
+  if (!state.pathTaken.includes(sceneId)) {
+    state.pathTaken.push(sceneId);
+  }
+
+  hideChoiceOverlay();
+  updateBreadcrumb();
+  updateProgressDots();
+
+  const isPlaceholder = !scene.videoId || scene.videoId === "PLACEHOLDER";
+
+  if (isPlaceholder) {
+    showPlaceholder(scene, sceneId);
+    if (scene.choiceAt !== null && scene.choices) {
+      // Simulate time passing in placeholder mode
+      simulatePlaceholderProgress(scene);
+    } else if (scene.outcome) {
+      // Terminal scene — auto-show end screen after short delay
+      state.phTimerId = setTimeout(() => showEndScreen(scene.outcome), 4000);
+    }
+  } else {
+    hidePlaceholder();
+    if (state.ytReady) {
+      if (state.player) {
+        state.player.loadVideoById({ videoId: scene.videoId, startSeconds: scene.startAt || 0 });
+      } else {
+        createYTPlayer(scene);
+      }
+      if (scene.choiceAt !== null && scene.choices) {
+        startPolling(scene);
+      }
+    }
+  }
+}
+
+function showPlaceholder(scene, sceneId) {
+  document.getElementById("placeholder-scene").style.display = "flex";
+  document.getElementById("yt-player").style.display = "none";
+  document.getElementById("ph-scene-name").textContent = scene.label;
+  document.getElementById("ph-video-id").textContent =
+    `videoId: ${scene.videoId || "not set"} | scene: ${sceneId}`;
+
+  // Fake progress bars
+  const prog = document.getElementById("ph-progress");
+  prog.innerHTML = "";
+  const total = 20;
+  for (let i = 0; i < total; i++) {
+    const bar = document.createElement("div");
+    bar.className = "fp-bar" + (i < 3 ? " filled" : "");
+    bar.style.width = "14px";
+    prog.appendChild(bar);
+  }
+}
+
+function hidePlaceholder() {
+  document.getElementById("placeholder-scene").style.display = "none";
+  document.getElementById("yt-player").style.display = "block";
+}
+
+/* Simulate progress in placeholder mode — shows overlay after choiceAt-5 equivalent */
+function simulatePlaceholderProgress(scene) {
+  const DEMO_DELAY = 3000; // Show choices 3s after scene loads in placeholder mode
+  const prog = document.getElementById("ph-progress");
+  let filled = 3;
+  const total = 20;
+  const interval = DEMO_DELAY / (total - 3);
+
+  state.phTimerId = setInterval(() => {
+    filled++;
+    const bars = prog.querySelectorAll(".fp-bar");
+    if (bars[filled - 1]) bars[filled - 1].classList.add("filled");
+    if (filled >= total) {
+      clearInterval(state.phTimerId);
+      state.phTimerId = null;
+      if (!state.overlayShown) showChoiceOverlay(scene);
+    }
+  }, interval);
+}
+
+/* ═══════════════════════════════════════════════════════
+   YOUTUBE PLAYER
+   ═══════════════════════════════════════════════════════ */
+function createYTPlayer(scene) {
+  state.player = new YT.Player("yt-player", {
+    videoId: scene.videoId,
+    playerVars: {
+      autoplay: 1, controls: 1, rel: 0,
+      start: scene.startAt || 0,
+      modestbranding: 1, iv_load_policy: 3
+    },
+    events: {
+      onReady: () => {
+        hidePlaceholder();
+        if (scene.choiceAt !== null && scene.choices) startPolling(scene);
+      },
+      onStateChange: onPlayerStateChange
+    }
+  });
+}
+
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.ENDED) {
+    const scene = SCENARIO.scenes[state.currentScene];
+    if (scene && scene.outcome) {
+      showEndScreen(scene.outcome);
+    }
+  }
+}
+
+/* Poll current time to trigger choice overlay */
+function startPolling(scene) {
+  const triggerAt = (scene.choiceAt || 30) - 5;
+  state.pollId = setInterval(() => {
+    if (!state.player || state.overlayShown) return;
+    const t = state.player.getCurrentTime();
+    if (t >= triggerAt) {
+      clearInterval(state.pollId);
+      showChoiceOverlay(scene);
+    }
+  }, 500);
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHOICE OVERLAY
+   ═══════════════════════════════════════════════════════ */
+function showChoiceOverlay(scene) {
+  if (state.overlayShown) return;
+  state.overlayShown = true;
+
+  const overlay = document.getElementById("choice-overlay");
+  const buttonsEl = document.getElementById("choice-buttons");
+
+  buttonsEl.innerHTML = "";
+  scene.choices.forEach((choice, i) => {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn";
+    btn.setAttribute("aria-label", choice.label);
+    btn.innerHTML = `
+      <span class="key-badge">${String.fromCharCode(65 + i)}</span>
+      <span>${choice.label}</span>
+    `;
+    btn.addEventListener("click", () => choose(i));
+    buttonsEl.appendChild(btn);
+  });
+
+  overlay.classList.add("visible");
+  startCountdown(10, scene); // 10s before auto-select
+}
+
+function hideChoiceOverlay() {
+  document.getElementById("choice-overlay").classList.remove("visible");
+  clearCountdown();
+}
+
+function choose(index) {
+  const scene = SCENARIO.scenes[state.currentScene];
+  if (!scene || !scene.choices) return;
+  const choice = scene.choices[index];
+  if (!choice) return;
+
+  clearTimers();
+  hideChoiceOverlay();
+
+  if (choice.tag) state.tagsTaken.push(choice.tag);
+  loadScene(choice.next);
+}
+
+/* ═══════════════════════════════════════════════════════
+   COUNTDOWN
+   ═══════════════════════════════════════════════════════ */
+function startCountdown(seconds, scene) {
+  let remaining = seconds;
+  const ring = document.getElementById("countdown-ring");
+  const updateRing = () => {
+    ring.textContent = remaining;
+    const deg = ((seconds - remaining) / seconds) * 360;
+    ring.style.background = `conic-gradient(var(--acc) ${deg}deg, var(--line) ${deg}deg)`;
+  };
+  updateRing();
+  state.countdownId = setInterval(() => {
+    remaining--;
+    updateRing();
+    if (remaining <= 0) {
+      clearCountdown();
+      choose(0); // auto-select first option
+    }
+  }, 1000);
+}
+
+function clearCountdown() {
+  if (state.countdownId) { clearInterval(state.countdownId); state.countdownId = null; }
+  document.getElementById("countdown-ring").textContent = "—";
+  document.getElementById("countdown-ring").style.background =
+    `conic-gradient(var(--acc) 0deg, var(--line) 0deg)`;
+}
+
+function clearTimers() {
+  clearCountdown();
+  if (state.pollId) { clearInterval(state.pollId); state.pollId = null; }
+  if (state.phTimerId) { clearInterval(state.phTimerId); clearTimeout(state.phTimerId); state.phTimerId = null; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   END SCREEN
+   ═══════════════════════════════════════════════════════ */
+function showEndScreen(outcomeKey) {
+  const outcome = SCENARIO.outcomes[outcomeKey];
+  if (!outcome) return;
+
+  document.getElementById("end-path-trail").textContent =
+    "Your path: " + state.pathTaken.join(" → ");
+  document.getElementById("end-outcome-title").textContent = outcome.title;
+  document.getElementById("end-outcome-archetype").textContent = outcome.archetype;
+  document.getElementById("end-outcome-body").textContent = outcome.body;
+  document.getElementById("end-outcome-lens").textContent = outcome.decisionOsLens;
+
+  document.getElementById("end-screen").classList.add("visible");
+}
+
+function hideEndScreen() {
+  document.getElementById("end-screen").classList.remove("visible");
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESET
+   ═══════════════════════════════════════════════════════ */
+function resetAll() {
+  clearTimers();
+  hideEndScreen();
+  hideChoiceOverlay();
+  state.pathTaken = [];
+  state.tagsTaken = [];
+  state.overlayShown = false;
+  if (state.player) state.player.stopVideo();
+  updateBreadcrumb();
+  updateProgressDots();
+  loadScene(SCENARIO.startScene);
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROGRESS DOTS
+   ═══════════════════════════════════════════════════════ */
+function buildProgressDots() {
+  const wrap = document.getElementById("progress-dots");
+  wrap.innerHTML = "";
+  for (let i = 0; i < SCENARIO.depth; i++) {
+    const dot = document.createElement("div");
+    dot.className = "dot";
+    dot.id = `dot-${i}`;
+    wrap.appendChild(dot);
+  }
+}
+
+function updateProgressDots() {
+  const depth = SCENARIO.depth;
+  for (let i = 0; i < depth; i++) {
+    const dot = document.getElementById(`dot-${i}`);
+    if (!dot) continue;
+    if (i < state.pathTaken.length - 1) {
+      dot.className = "dot visited";
+    } else if (i === state.pathTaken.length - 1) {
+      dot.className = "dot active";
+    } else {
+      dot.className = "dot";
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   BREADCRUMB
+   ═══════════════════════════════════════════════════════ */
+function updateBreadcrumb() {
+  const el = document.getElementById("breadcrumb");
+  el.innerHTML = "";
+  state.pathTaken.forEach((sceneId, i) => {
+    const scene = SCENARIO.scenes[sceneId];
+    if (!scene) return;
+    if (i > 0) {
+      const arrow = document.createElement("span");
+      arrow.className = "crumb";
+      arrow.innerHTML = `<span class="crumb-arrow">→</span>`;
+      el.appendChild(arrow);
+    }
+    const crumb = document.createElement("span");
+    crumb.className = "crumb";
+    crumb.innerHTML = `<span class="crumb-label">${scene.label}</span>`;
+    el.appendChild(crumb);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   YOUTUBE CARDS INSTRUCTIONS
+   ═══════════════════════════════════════════════════════ */
+function buildYtCardsInstructions() {
+  const list = document.getElementById("yt-cards-list");
+  list.innerHTML = "";
+
+  Object.entries(SCENARIO.scenes).forEach(([sceneId, scene]) => {
+    if (!scene.choices || scene.choices.length === 0) return;
+
+    const div = document.createElement("div");
+    div.className = "card-instruction";
+    const choiceLinks = scene.choices.map((c, i) =>
+      `[${String.fromCharCode(65+i)}] → scene <strong>${c.next}</strong>`
+    ).join(" &nbsp;|&nbsp; ");
+
+    div.innerHTML = `
+      <div>
+        <div class="scene-ref">${scene.label} <code>${sceneId}</code></div>
+        <div style="margin-top:4px;font-size:11px;">${choiceLinks}</div>
+        <div style="margin-top:4px;font-size:11px;color:#4a5568;">
+          In YouTube Studio → Video details → Cards → Add Card at this timestamp, link to next video.
+        </div>
+      </div>
+      <div class="timestamp">Add card at<br>${scene.choiceAt !== null ? scene.choiceAt - 2 : "—"}s</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   KEYBOARD
+   ═══════════════════════════════════════════════════════ */
+function handleKey(e) {
+  if (!state.overlayShown) return;
+  const key = e.key.toUpperCase();
+  const scene = SCENARIO.scenes[state.currentScene];
+  if (!scene || !scene.choices) return;
+  scene.choices.forEach((_, i) => {
+    if (key === String.fromCharCode(65 + i)) choose(i);
+  });
+}
+</script>
+
+</body>
+</html>
