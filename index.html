@@ -39,6 +39,16 @@
     }
     .pill{ display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); font-size:12px; }
     footer{ margin-top:18px; }
+    /* Course Planner */
+    .course-planner-card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-top:14px; }
+    .planner-toggle{
+      display:flex; align-items:center; justify-content:space-between;
+      cursor:pointer; user-select:none; padding:4px 0;
+    }
+    .planner-toggle h2{ margin:0; font-size:14px; }
+    .planner-toggle:hover .pill{ border-color:#365071; color:var(--text); }
+    .track-btn{ border-color:#2b5a3a; background:linear-gradient(180deg,rgba(74,222,128,.1),rgba(74,222,128,.03)); }
+    .track-btn:hover{ border-color:#3d7a50; }
   </style>
 </head>
 <body>
@@ -46,116 +56,207 @@
   <h1>Decide Engine — Topic → (Problem + Solution) Generator</h1>
 </header>
 
-<main class="grid">
-  <section class="card">
-    <div class="row">
-      <div>
-        <label>Course / Playlist Name</label>
-        <input id="courseName" placeholder="Decision Systems for Modern Operators" />
+<main>
+  <div class="grid">
+    <section class="card">
+      <div class="row">
+        <div>
+          <label>Course / Playlist Name</label>
+          <input id="courseName" placeholder="Decision Systems for Modern Operators" />
+        </div>
+        <div>
+          <label>Module #</label>
+          <input id="moduleNo" placeholder="01" />
+        </div>
       </div>
-      <div>
-        <label>Module #</label>
-        <input id="moduleNo" placeholder="01" />
-      </div>
-    </div>
 
-    <label>Topic (single line)</label>
-    <input id="topic" placeholder="Incentives Beat Intelligence" />
+      <label>Topic (single line)</label>
+      <input id="topic" placeholder="Incentives Beat Intelligence" />
 
-    <div class="row">
-      <div>
-        <label>Audience</label>
-        <input id="audience" placeholder="operators (builders, founders, engineers)" />
+      <div class="row">
+        <div>
+          <label>Audience</label>
+          <input id="audience" placeholder="operators (builders, founders, engineers)" />
+        </div>
+        <div>
+          <label>Tone</label>
+          <select id="tone">
+            <option value="operator">Operator / clinical</option>
+            <option value="teaching">Teaching / structured</option>
+            <option value="debate">Debate / contrarian but safe</option>
+          </select>
+        </div>
       </div>
-      <div>
-        <label>Tone</label>
-        <select id="tone">
-          <option value="operator">Operator / clinical</option>
-          <option value="teaching">Teaching / structured</option>
-          <option value="debate">Debate / contrarian but safe</option>
-        </select>
-      </div>
-    </div>
 
-    <label>Bullet points (one per line)</label>
-    <textarea id="bullets" placeholder="e.g.
+      <label>Bullet points (one per line)</label>
+      <textarea id="bullets" placeholder="e.g.
 - Incentives determine behavior
 - Hidden metrics drive real decisions
 - Goodhart's Law failure modes"></textarea>
 
-    <div class="row">
-      <button class="btn primary" id="generateBtn">Generate Outputs</button>
-      <button class="btn" id="saveBtn">Save</button>
-      <button class="btn" id="loadBtn">Load</button>
-      <button class="btn danger" id="resetBtn">Reset</button>
+      <div class="row">
+        <button class="btn primary" id="generateBtn">Generate Outputs</button>
+        <button class="btn" id="saveBtn">Save</button>
+        <button class="btn" id="loadBtn">Load</button>
+        <button class="btn danger" id="resetBtn">Reset</button>
+      </div>
+
+      <label>NotebookLM Source Pack Prompt (auto-filled)</label>
+      <textarea id="notebookPrompt"></textarea>
+
+      <div class="row">
+        <button class="btn" id="copyPromptBtn">Copy Prompt</button>
+        <button class="btn" id="exportBtn">Export JSON</button>
+        <button class="btn" id="importBtn">Import JSON</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none" />
+      </div>
+
+      <p class="small">
+        Notes: This tool uses localStorage only. No network calls. Works offline.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="outHead">
+        <h2>Outputs</h2>
+        <span class="pill" id="statusPill">idle</span>
+      </div>
+
+      <div style="display:grid; gap:12px;">
+        <div>
+          <div class="outHead">
+            <h2>Problem Video Script</h2>
+            <button class="btn" data-copy="problemScript">Copy</button>
+          </div>
+          <pre id="problemScript"></pre>
+        </div>
+
+        <div>
+          <div class="outHead">
+            <h2>Solution Video Script</h2>
+            <button class="btn" data-copy="solutionScript">Copy</button>
+          </div>
+          <pre id="solutionScript"></pre>
+        </div>
+
+        <div>
+          <div class="outHead">
+            <h2>YouTube Post</h2>
+            <button class="btn" data-copy="ytPost">Copy</button>
+          </div>
+          <pre id="ytPost"></pre>
+        </div>
+
+        <div>
+          <div class="outHead">
+            <h2>Visual Guide (Problem + Solution)</h2>
+            <button class="btn" data-copy="visualGuide">Copy</button>
+          </div>
+          <pre id="visualGuide"></pre>
+        </div>
+
+        <div>
+          <div class="outHead">
+            <h2>A/B Test Posts (2 variants)</h2>
+            <button class="btn" data-copy="abPosts">Copy</button>
+          </div>
+          <pre id="abPosts"></pre>
+        </div>
+      </div>
+
+      <footer class="small">
+        Tip: Keep bullets concrete (mechanisms, constraints, examples). Avoid adjectives.
+      </footer>
+    </section>
+  </div>
+
+  <!-- ===== COURSE PLANNER ===== -->
+  <section class="course-planner-card">
+    <div class="planner-toggle" id="plannerToggle">
+      <h2>Course Planner</h2>
+      <span class="pill" id="plannerToggleLabel">expand ↓</span>
     </div>
 
-    <label>NotebookLM Source Pack Prompt (auto-filled)</label>
-    <textarea id="notebookPrompt"></textarea>
+    <div id="plannerBody" style="display:none; margin-top:14px;">
 
-    <div class="row">
-      <button class="btn" id="copyPromptBtn">Copy Prompt</button>
-      <button class="btn" id="exportBtn">Export JSON</button>
-      <button class="btn" id="importBtn">Import JSON</button>
-      <input type="file" id="importFile" accept="application/json" style="display:none" />
+      <div class="row">
+        <div>
+          <label>Total Modules</label>
+          <input type="number" id="totalModules" value="8" min="1" max="24" />
+        </div>
+        <div>
+          <label>Cohort Format</label>
+          <select id="cohortFormat">
+            <option value="self-paced">Self-Paced</option>
+            <option value="weekly-cohort">Weekly Cohort</option>
+            <option value="intensive">Intensive Bootcamp</option>
+          </select>
+        </div>
+        <div>
+          <label>Cohort Start Date</label>
+          <input type="date" id="cohortStartDate" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Self-Paced Price ($)</label>
+          <input type="number" id="priceSelfPaced" value="97" min="0" />
+        </div>
+        <div>
+          <label>Cohort Price ($)</label>
+          <input type="number" id="priceCohort" value="297" min="0" />
+        </div>
+        <div>
+          <label>Team / Agency Price ($)</label>
+          <input type="number" id="priceTeam" value="997" min="0" />
+        </div>
+        <div>
+          <label>Early Bird Discount (%)</label>
+          <input type="number" id="earlyBirdPct" value="30" min="0" max="100" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="btn track-btn" id="prefillDecisionBtn">Load Decision Systems OS</button>
+        <button class="btn track-btn" id="prefillRemotionBtn">Load Remotion Video Systems</button>
+        <button class="btn primary" id="generateCourseBtn">Generate Course Plan</button>
+      </div>
+
+      <div style="display:grid; gap:12px; margin-top:16px;">
+        <div>
+          <div class="outHead">
+            <h2>Course Curriculum</h2>
+            <button class="btn" data-copy-course="curriculumOutline">Copy</button>
+          </div>
+          <pre id="curriculumOutline"></pre>
+        </div>
+
+        <div>
+          <div class="outHead">
+            <h2>Pricing Page Copy</h2>
+            <button class="btn" data-copy-course="pricingPage">Copy</button>
+          </div>
+          <pre id="pricingPage"></pre>
+        </div>
+
+        <div>
+          <div class="outHead">
+            <h2>Cohort Launch Post</h2>
+            <button class="btn" data-copy-course="cohortLaunchPost">Copy</button>
+          </div>
+          <pre id="cohortLaunchPost"></pre>
+        </div>
+
+        <div>
+          <div class="outHead">
+            <h2>YouTube Channel About (decide.engine)</h2>
+            <button class="btn" data-copy-course="ytChannelAbout">Copy</button>
+          </div>
+          <pre id="ytChannelAbout"></pre>
+        </div>
+      </div>
     </div>
-
-    <p class="small">
-      Notes: This tool uses localStorage only. No network calls. Works offline.
-    </p>
-  </section>
-
-  <section class="card">
-    <div class="outHead">
-      <h2>Outputs</h2>
-      <span class="pill" id="statusPill">idle</span>
-    </div>
-
-    <div style="display:grid; gap:12px;">
-      <div>
-        <div class="outHead">
-          <h2>Problem Video Script</h2>
-          <button class="btn" data-copy="problemScript">Copy</button>
-        </div>
-        <pre id="problemScript"></pre>
-      </div>
-
-      <div>
-        <div class="outHead">
-          <h2>Solution Video Script</h2>
-          <button class="btn" data-copy="solutionScript">Copy</button>
-        </div>
-        <pre id="solutionScript"></pre>
-      </div>
-
-      <div>
-        <div class="outHead">
-          <h2>YouTube Post</h2>
-          <button class="btn" data-copy="ytPost">Copy</button>
-        </div>
-        <pre id="ytPost"></pre>
-      </div>
-
-      <div>
-        <div class="outHead">
-          <h2>Visual Guide (Problem + Solution)</h2>
-          <button class="btn" data-copy="visualGuide">Copy</button>
-        </div>
-        <pre id="visualGuide"></pre>
-      </div>
-
-      <div>
-        <div class="outHead">
-          <h2>A/B Test Posts (2 variants)</h2>
-          <button class="btn" data-copy="abPosts">Copy</button>
-        </div>
-        <pre id="abPosts"></pre>
-      </div>
-    </div>
-
-    <footer class="small">
-      Tip: Keep bullets concrete (mechanisms, constraints, examples). Avoid adjectives.
-    </footer>
   </section>
 </main>
 
@@ -164,6 +265,41 @@
   const $ = (id) => document.getElementById(id);
 
   const STORAGE_KEY = "decide_engine_course_builder_v1";
+
+  // ── Pre-built course tracks ──────────────────────────────────────────────
+  const COURSE_TRACKS = {
+    decisionSystems: {
+      name: "Decision Systems for Modern Operators",
+      priceSP: 97, priceCohort: 297, priceTeam: 997,
+      modules: [
+        { no:"01", topic:"Incentives Beat Intelligence",  bullets:["Incentives determine behavior before intelligence applies","Hidden metrics drive real decisions","Goodhart's Law failure modes"] },
+        { no:"02", topic:"The Constraint Stack",          bullets:["Constraints are not problems — they are parameters","Binding vs. non-binding constraints","How to map a constraint stack"] },
+        { no:"03", topic:"Decision Hygiene",              bullets:["Pre-mortems reduce overconfidence","Separating reversible from irreversible","Checklists as decision interfaces"] },
+        { no:"04", topic:"Failure Mode Taxonomy",         bullets:["Classify failures before solving them","Known unknowns vs. unknown unknowns","Failure taxonomy as a diagnostic tool"] },
+        { no:"05", topic:"The Feedback Loop Protocol",    bullets:["Feedback lag distorts learning","Designing tight feedback loops","Separating signal from noise"] },
+        { no:"06", topic:"Reversibility Framework",       bullets:["Reversible decisions need speed, not process","Irreversible decisions need structure, not speed","Two-door model in practice"] },
+        { no:"07", topic:"Operators vs Optimizers",       bullets:["Optimizers tune existing systems","Operators redesign the system itself","When to switch modes"] },
+        { no:"08", topic:"Building Your Decision OS",     bullets:["OS = inputs + rules + feedback","Weekly decision review protocol","How to install a decision OS in your org"] }
+      ]
+    },
+    remotion: {
+      name: "Remotion Video Systems",
+      priceSP: 147, priceCohort: 397, priceTeam: 1297,
+      modules: [
+        { no:"01", topic:"Why Manual Editing Fails at Scale",       bullets:["Manual editing is O(n) cost","Consistency breaks without systems","Time-per-video as the key metric"] },
+        { no:"02", topic:"Your First Remotion Composition",         bullets:["React component = video frame","Props as parameters","Preview vs render pipeline"] },
+        { no:"03", topic:"Data-Driven Video Templates",             bullets:["Separate data from layout","JSON → video via template","Template versioning"] },
+        { no:"04", topic:"Automating Thumbnails and B-Roll",        bullets:["Thumbnail as a code artifact","B-roll sourcing automation","Asset pipeline design"] },
+        { no:"05", topic:"The Content Pipeline System",             bullets:["Script → assets → render → publish","Queue-based rendering","Error handling in automation"] },
+        { no:"06", topic:"Publishing and Distribution Automation",  bullets:["YouTube API upload flow","Metadata templating","Scheduling via cron/queue"] },
+        { no:"07", topic:"Analytics-Driven Iteration",             bullets:["Which metrics feed back into content","A/B testing at the template level","Data loop from analytics to script"] },
+        { no:"08", topic:"Building a Video OS",                     bullets:["OS = input + template + pipeline + feedback","Ops runbook for your video system","Scaling beyond one creator"] }
+      ]
+    }
+  };
+
+  // Runtime-only holder for active track modules (not persisted)
+  window._activeCourseModules = null;
 
   function nowISO(){
     return new Date().toISOString();
@@ -180,8 +316,10 @@
     return (s||"").trim();
   }
 
+  // ── Module-level builders ────────────────────────────────────────────────
+
   function buildNotebookPrompt(topic, angle, audience){
-    return `You are my research analyst. Build a “Source Pack” for the topic below using only reliable sources.
+    return `You are my research analyst. Build a "Source Pack" for the topic below using only reliable sources.
 
 Topic: ${topic}
 Angle: ${angle}
@@ -216,7 +354,7 @@ Deliver in this structure:
 - Tier 3 (3/5): …
 - Evidence map
 - Contradictions & uncertainty
-- “What not to claim” (claims not supported strongly enough)
+- "What not to claim" (claims not supported strongly enough)
 
 Do not write the script yet. Only build the Source Pack.`;
   }
@@ -229,7 +367,7 @@ Do not write the script yet. Only build the Source Pack.`;
 
 OPEN (0:00–0:20)
 - Claim: Most people misdiagnose ${ctx.topic.toLowerCase()} and treat symptoms as causes.
-- Promise: You’ll leave with a clean failure-map, not “tips”.
+- Promise: You'll leave with a clean failure-map, not "tips".
 
 CONTEXT (0:20–1:10)
 - Who this is for: ${ctx.audience}
@@ -249,7 +387,7 @@ COST OF FAILURE (7:00–8:00)
 - Make the cost legible.
 
 TRANSITION (8:00–8:20)
-- “In the next video, we build the system: inputs, rules, and a repeatable checklist.”`;
+- "In the next video, we build the system: inputs, rules, and a repeatable checklist."`;
   }
 
   function buildSolutionScript(ctx){
@@ -288,8 +426,8 @@ CLOSE (10:00–10:20)
   function buildYTPost(ctx){
     const hooks = [
       `Most people misunderstand ${ctx.topic.toLowerCase()}.`,
-      `${ctx.topic} isn’t a mindset problem. It’s a system problem.`,
-      `If you don’t model incentives/constraints, ${ctx.topic.toLowerCase()} becomes noise.`
+      `${ctx.topic} isn't a mindset problem. It's a system problem.`,
+      `If you don't model incentives/constraints, ${ctx.topic.toLowerCase()} becomes noise.`
     ];
 
     return `${hooks[0]}
@@ -312,12 +450,12 @@ Source Pack (NotebookLM): link in description
     return `VISUAL GUIDE — ${ctx.moduleLabel}: ${ctx.topic}
 
 PROBLEM VIDEO VISUALS
-1) “Failure Map” slide:
+1) "Failure Map" slide:
    - Symptom → Mechanism → Root cause
-2) “Why advice fails” slide:
+2) "Why advice fails" slide:
    - Advice A → breaks because ___
    - Advice B → breaks because ___
-3) “Cost of failure” slide:
+3) "Cost of failure" slide:
    - Time / Money / Reputation / Opportunity
 
 SOLUTION VIDEO VISUALS
@@ -329,12 +467,12 @@ SOLUTION VIDEO VISUALS
    - Scenario | Input | Filter result | Decision | Next check date
 
 THUMBNAIL / TITLE FORMAT
-- Problem: “Why ${ctx.topic} Fails”
-- Solution: “The ${ctx.topic} System”`;
+- Problem: "Why ${ctx.topic} Fails"
+- Solution: "The ${ctx.topic} System"`;
   }
 
   function buildABPosts(ctx){
-    const a = `A) People don’t fail because they lack discipline.
+    const a = `A) People don't fail because they lack discipline.
 They fail because their system is mis-specified.
 
 Module ${ctx.moduleNo}: ${ctx.topic}
@@ -369,9 +507,237 @@ Video 2: install the system`;
     };
   }
 
+  // ── Course-level context ─────────────────────────────────────────────────
+
+  function getCourseCtx(){
+    const base = getCtx();
+    const totalModules    = parseInt($("totalModules").value)     || 8;
+    const cohortFormat    = $("cohortFormat").value               || "self-paced";
+    const cohortStartDate = $("cohortStartDate").value            || "";
+    const priceSP         = parseFloat($("priceSelfPaced").value) || 97;
+    const priceCohort     = parseFloat($("priceCohort").value)    || 297;
+    const priceTeam       = parseFloat($("priceTeam").value)      || 997;
+    const earlyBirdPct    = parseFloat($("earlyBirdPct").value)   || 30;
+
+    const ebSP     = Math.round(priceSP     * (1 - earlyBirdPct / 100));
+    const ebCohort = Math.round(priceCohort * (1 - earlyBirdPct / 100));
+    const ebTeam   = Math.round(priceTeam   * (1 - earlyBirdPct / 100));
+
+    return {
+      ...base,
+      totalModules, cohortFormat, cohortStartDate,
+      priceSP, priceCohort, priceTeam, earlyBirdPct,
+      ebSP, ebCohort, ebTeam,
+      modules: window._activeCourseModules || null
+    };
+  }
+
+  // ── Course-level builders ────────────────────────────────────────────────
+
+  function buildCurriculumOutline(ctx){
+    const formatLabels = { "self-paced":"Self-Paced", "weekly-cohort":"Weekly Cohort", "intensive":"Intensive Bootcamp" };
+    const formatLabel  = formatLabels[ctx.cohortFormat] || ctx.cohortFormat;
+    const modules      = ctx.modules;
+
+    let out = `COURSE CURRICULUM — ${ctx.courseName}\n`;
+    out    += `Format: ${formatLabel} | Total Modules: ${ctx.totalModules}\n`;
+    if(ctx.cohortStartDate) out += `Cohort Start: ${ctx.cohortStartDate}\n`;
+    out    += `\n`;
+
+    if(modules && modules.length){
+      modules.forEach((m, i) => {
+        out += `Module ${m.no}: ${m.topic}\n`;
+        out += `  Problem  → "Why ${m.topic} Fails"\n`;
+        out += `  Solution → "The ${m.topic} System"\n`;
+        if(m.bullets && m.bullets.length){
+          m.bullets.forEach(b => { out += `    • ${b}\n`; });
+        }
+        if(ctx.cohortFormat === "weekly-cohort" && ctx.cohortStartDate){
+          const start = new Date(ctx.cohortStartDate);
+          start.setDate(start.getDate() + i * 7);
+          out += `  Week ${i+1}: ${start.toISOString().slice(0,10)}\n`;
+        }
+        out += `\n`;
+      });
+    } else {
+      for(let i = 1; i <= ctx.totalModules; i++){
+        const n = String(i).padStart(2,"0");
+        out += `Module ${n}: [Topic TBD]\n`;
+        out += `  Problem  → "Why [Topic] Fails"\n`;
+        out += `  Solution → "The [Topic] System"\n\n`;
+      }
+    }
+
+    out += `─────────────────────\n`;
+    out += `Total videos:  ${ctx.totalModules * 2} (${ctx.totalModules} problem + ${ctx.totalModules} solution)\n`;
+    out += `Source Packs:  ${ctx.totalModules} (one per module, built with NotebookLM)\n`;
+    return out;
+  }
+
+  function buildPricingPage(ctx){
+    const formatLabels = { "self-paced":"Self-Paced", "weekly-cohort":"Weekly Cohort", "intensive":"Intensive Bootcamp" };
+    const formatLabel  = formatLabels[ctx.cohortFormat] || ctx.cohortFormat;
+    const cadence      = ctx.cohortFormat === "intensive" ? "daily" : "weekly";
+    const ebDate       = ctx.cohortStartDate
+      ? (() => { const d = new Date(ctx.cohortStartDate); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })()
+      : "TBD";
+
+    return `PRICING PAGE COPY — ${ctx.courseName}
+
+━━━━━━━━━━━━━━━━━━━━━
+TIER 1 — Self-Paced
+Regular: $${ctx.priceSP}    Early Bird: $${ctx.ebSP}  (save ${ctx.earlyBirdPct}%)
+
+What's included:
+• All ${ctx.totalModules} modules (${ctx.totalModules * 2} videos)
+• Written decision frameworks + checklists
+• NotebookLM Source Pack per module (15+ sources, evidence-mapped)
+• Lifetime access + future module updates
+• No expiry, no drip — all content unlocked on day one
+
+Best for: Operators who want to work through material on their own schedule.
+
+━━━━━━━━━━━━━━━━━━━━━
+TIER 2 — ${formatLabel} Cohort
+Regular: $${ctx.priceCohort}    Early Bird: $${ctx.ebCohort}  (save ${ctx.earlyBirdPct}%)
+
+Everything in Self-Paced, plus:
+• ${cadence.charAt(0).toUpperCase()+cadence.slice(1)} live cohort sessions (60 min each)
+• Private community (Discord) — peer operators only
+• Office hours 30 min/week with instructor
+• Cohort accountability structure${ctx.cohortStartDate ? `\n• Starts: ${ctx.cohortStartDate}` : ""}
+
+Best for: Operators who want structured accountability and a peer network.
+
+━━━━━━━━━━━━━━━━━━━━━
+TIER 3 — Team / Agency (5 seats)
+Regular: $${ctx.priceTeam}    Early Bird: $${ctx.ebTeam}  (save ${ctx.earlyBirdPct}%)
+
+Everything in Cohort, plus:
+• Up to 5 named seats (additional seats available)
+• Team decision-system workshop (1×90-min session)
+• Private Slack channel for your team
+• Custom onboarding call + team audit
+
+Best for: Teams installing a shared decision-making operating system.
+
+─────────────────────
+Early Bird closes: ${ebDate}
+
+FAQ
+Q: Is this live or async?
+A: Self-Paced is 100% async. Cohort tier adds ${cadence} live sessions.
+
+Q: What if I fall behind in the cohort?
+A: All recordings available. Lifetime access. No pressure.
+
+Q: Refund policy?
+A: 14-day no-questions refund if you've watched fewer than 2 modules.
+
+Q: Is this worth it vs. free YouTube content?
+A: Free videos = individual modules, scattered. Paid = complete curriculum,
+   source packs, community, and live access in one structured system.
+   $${ctx.priceSP} is one contractor hour. $${ctx.priceCohort} is less than most unused SaaS tools.`;
+  }
+
+  function buildCohortLaunchPost(ctx){
+    const dateStr  = ctx.cohortStartDate
+      ? `Cohort starts: ${ctx.cohortStartDate}`
+      : "Cohort dates: TBD — join the waitlist";
+    const ebDate   = ctx.cohortStartDate
+      ? (() => { const d = new Date(ctx.cohortStartDate); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })()
+      : "TBD";
+    const modList  = ctx.modules
+      ? ctx.modules.map(m => `• Module ${m.no}: ${m.topic}`).join("\n")
+      : `• ${ctx.totalModules} modules covering the complete system`;
+
+    return `COHORT LAUNCH POST — ${ctx.courseName}
+
+─────────────────────
+
+Most people don't have a decision problem.
+They have a system problem.
+
+Introducing: ${ctx.courseName}
+
+${ctx.totalModules} modules. ${ctx.totalModules * 2} videos. One repeatable Decision OS.
+
+─────────────────────
+WHAT'S INSIDE
+─────────────────────
+${modList}
+
+─────────────────────
+THREE WAYS TO JOIN
+─────────────────────
+Self-Paced       $${ctx.priceSP}   →  Early Bird $${ctx.ebSP}
+Cohort           $${ctx.priceCohort}   →  Early Bird $${ctx.ebCohort}
+Team (5 seats)   $${ctx.priceTeam}  →  Early Bird $${ctx.ebTeam}
+
+${dateStr}
+Early Bird closes: ${ebDate}
+
+─────────────────────
+WHO IS THIS FOR
+─────────────────────
+Builders, founders, and engineers who want to:
+→ Make faster decisions with less second-guessing
+→ Build systems that decide, not just advise
+→ Stop mistaking optimization for operation
+
+Link in bio / DM for early access.
+#decideengine #decisionsystems #operatormindset`;
+  }
+
+  function buildYTChannelAbout(ctx){
+    const modList = ctx.modules
+      ? ctx.modules.map(m => `  • Module ${m.no}: ${m.topic}`).join("\n")
+      : `  • ${ctx.totalModules} modules covering the full decision system`;
+
+    return `YOUTUBE CHANNEL ABOUT — decide.engine
+
+decide.engine is a systems channel for operators.
+
+We cover:
+• Decision frameworks that hold under pressure
+• Failure mode diagnosis (not just "lessons learned")
+• Incentive structures, constraints, and feedback loops
+• Programmatic systems that reduce cognitive load
+
+Each topic gets two videos:
+  1) Problem — the failure map: why common approaches break
+  2) Solution — the system: inputs, rules, checklist, worked example
+
+Every module is backed by a NotebookLM Source Pack:
+  15+ credible sources, tiered by reliability (0–5), evidence-mapped.
+  No anonymous blogs. No motivational content. Peer-reviewed first.
+
+No motivation. No "mindset". Just mechanisms.
+
+─────────────────────
+CURRENT COURSE: ${ctx.courseName}
+─────────────────────
+${modList}
+
+${ctx.totalModules} modules | ${ctx.totalModules * 2} videos | Source Pack per module
+
+─────────────────────
+Subscribe if you want to think and operate more clearly.
+
+→ Course: [link]
+→ Community: [link]
+→ Newsletter: [link]
+
+#decisionsystems #operatorframework #decideengine`;
+  }
+
+  // ── UI helpers ───────────────────────────────────────────────────────────
+
   function setStatus(text){
     $("statusPill").textContent = text;
   }
+
+  // ── Module-level generate ────────────────────────────────────────────────
 
   function generate(){
     const ctx = getCtx();
@@ -388,6 +754,48 @@ Video 2: install the system`;
     persist();
   }
 
+  // ── Course-level generate ────────────────────────────────────────────────
+
+  function generateCoursePlan(){
+    const ctx = getCourseCtx();
+
+    $("curriculumOutline").textContent = buildCurriculumOutline(ctx);
+    $("pricingPage").textContent       = buildPricingPage(ctx);
+    $("cohortLaunchPost").textContent  = buildCohortLaunchPost(ctx);
+    $("ytChannelAbout").textContent    = buildYTChannelAbout(ctx);
+
+    persist();
+    setStatus("course plan generated " + nowISO().slice(0,19).replace("T"," "));
+  }
+
+  // ── Track pre-fill ───────────────────────────────────────────────────────
+
+  function applyTrack(trackKey){
+    const track = COURSE_TRACKS[trackKey];
+    if(!track) return;
+    window._activeCourseModules = track.modules;
+
+    // Shared course name field
+    $("courseName").value    = track.name;
+    $("totalModules").value  = track.modules.length;
+
+    // Pricing pre-fill
+    $("priceSelfPaced").value = track.priceSP;
+    $("priceCohort").value    = track.priceCohort;
+    $("priceTeam").value      = track.priceTeam;
+
+    // Pre-load first module into the per-module form too
+    const first = track.modules[0];
+    $("moduleNo").value  = first.no;
+    $("topic").value     = first.topic;
+    $("bullets").value   = first.bullets.map(b => `- ${b}`).join("\n");
+
+    persist();
+    setStatus("loaded: " + track.name);
+  }
+
+  // ── Persist / Load ───────────────────────────────────────────────────────
+
   function persist(){
     const ctx = getCtx();
     const payload = {
@@ -401,6 +809,21 @@ Video 2: install the system`;
         ytPost: $("ytPost").textContent,
         visualGuide: $("visualGuide").textContent,
         abPosts: $("abPosts").textContent
+      },
+      coursePlan: {
+        totalModules:    $("totalModules").value,
+        cohortFormat:    $("cohortFormat").value,
+        cohortStartDate: $("cohortStartDate").value,
+        priceSelfPaced:  $("priceSelfPaced").value,
+        priceCohort:     $("priceCohort").value,
+        priceTeam:       $("priceTeam").value,
+        earlyBirdPct:    $("earlyBirdPct").value,
+        outputs: {
+          curriculumOutline: $("curriculumOutline").textContent,
+          pricingPage:       $("pricingPage").textContent,
+          cohortLaunchPost:  $("cohortLaunchPost").textContent,
+          ytChannelAbout:    $("ytChannelAbout").textContent
+        }
       }
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -425,6 +848,23 @@ Video 2: install the system`;
     $("visualGuide").textContent = data.outputs?.visualGuide || "";
     $("abPosts").textContent = data.outputs?.abPosts || "";
 
+    if(data.coursePlan){
+      const cp = data.coursePlan;
+      $("totalModules").value    = cp.totalModules    || "8";
+      $("cohortFormat").value    = cp.cohortFormat    || "self-paced";
+      $("cohortStartDate").value = cp.cohortStartDate || "";
+      $("priceSelfPaced").value  = cp.priceSelfPaced  || "97";
+      $("priceCohort").value     = cp.priceCohort     || "297";
+      $("priceTeam").value       = cp.priceTeam       || "997";
+      $("earlyBirdPct").value    = cp.earlyBirdPct    || "30";
+      if(cp.outputs){
+        $("curriculumOutline").textContent = cp.outputs.curriculumOutline || "";
+        $("pricingPage").textContent       = cp.outputs.pricingPage       || "";
+        $("cohortLaunchPost").textContent  = cp.outputs.cohortLaunchPost  || "";
+        $("ytChannelAbout").textContent    = cp.outputs.ytChannelAbout    || "";
+      }
+    }
+
     setStatus("loaded " + (data.savedAt ? data.savedAt.slice(0,19).replace("T"," ") : ""));
   }
 
@@ -433,6 +873,18 @@ Video 2: install the system`;
     localStorage.removeItem(STORAGE_KEY);
     ["courseName","moduleNo","topic","audience","bullets","notebookPrompt"].forEach(id => $(id).value = "");
     ["problemScript","solutionScript","ytPost","visualGuide","abPosts"].forEach(id => $(id).textContent = "");
+
+    // Course planner reset
+    $("totalModules").value    = "8";
+    $("cohortFormat").selectedIndex = 0;
+    $("cohortStartDate").value = "";
+    $("priceSelfPaced").value  = "97";
+    $("priceCohort").value     = "297";
+    $("priceTeam").value       = "997";
+    $("earlyBirdPct").value    = "30";
+    ["curriculumOutline","pricingPage","cohortLaunchPost","ytChannelAbout"].forEach(id => $(id).textContent = "");
+    window._activeCourseModules = null;
+
     setStatus("reset");
   }
 
@@ -442,7 +894,6 @@ Video 2: install the system`;
       await navigator.clipboard.writeText(text);
       setStatus("copied " + id);
     }catch(e){
-      // fallback
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
@@ -480,7 +931,16 @@ Video 2: install the system`;
     reader.readAsText(file);
   }
 
-  // wire up
+  // ── Collapsible planner ──────────────────────────────────────────────────
+
+  let plannerOpen = false;
+  $("plannerToggle").addEventListener("click", () => {
+    plannerOpen = !plannerOpen;
+    $("plannerBody").style.display = plannerOpen ? "block" : "none";
+    $("plannerToggleLabel").textContent = plannerOpen ? "collapse ↑" : "expand ↓";
+  });
+
+  // ── Wire up module-level ─────────────────────────────────────────────────
   $("generateBtn").addEventListener("click", generate);
   $("saveBtn").addEventListener("click", () => { persist(); setStatus("saved " + nowISO().slice(0,19).replace("T"," ")); });
   $("loadBtn").addEventListener("click", load);
@@ -500,13 +960,28 @@ Video 2: install the system`;
     e.target.value = "";
   });
 
-  // autosave on change
+  // autosave on change — module inputs
   ["courseName","moduleNo","topic","audience","tone","bullets"].forEach(id=>{
     $(id).addEventListener("input", () => { persist(); setStatus("autosaved"); });
     $(id).addEventListener("change", () => { persist(); setStatus("autosaved"); });
   });
 
-  // initial
+  // ── Wire up course-level ─────────────────────────────────────────────────
+  $("generateCourseBtn").addEventListener("click", generateCoursePlan);
+  $("prefillDecisionBtn").addEventListener("click", () => applyTrack("decisionSystems"));
+  $("prefillRemotionBtn").addEventListener("click", () => applyTrack("remotion"));
+
+  document.querySelectorAll("[data-copy-course]").forEach(btn=>{
+    btn.addEventListener("click", () => copyFrom(btn.getAttribute("data-copy-course")));
+  });
+
+  // autosave on change — course planner inputs
+  ["totalModules","cohortFormat","cohortStartDate","priceSelfPaced","priceCohort","priceTeam","earlyBirdPct"].forEach(id=>{
+    $(id).addEventListener("input",  () => { persist(); setStatus("autosaved"); });
+    $(id).addEventListener("change", () => { persist(); setStatus("autosaved"); });
+  });
+
+  // ── Initial load ─────────────────────────────────────────────────────────
   load();
   if(!$("notebookPrompt").value){
     const ctx = getCtx();
