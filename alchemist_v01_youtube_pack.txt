@@ -1,0 +1,24 @@
+YOUTUBE PACKAGE — ALCHEMIST V01
+
+Title:
+I Built Tinder for Surveys — This Is How It Started
+
+Description:
+I sent a survey to 200 people and only 12 replied.
+So I rebuilt surveys as swipe cards in one afternoon.
+163 people finished the test.
+
+Now there are 4 possible directions:
+A: Question Engine
+B: Design Mode
+C: Backend + Analytics
+D: Real Paying Customer
+
+Comment A, B, C, or D.
+Top-voted path becomes the next episode.
+
+Pinned Comment:
+Vote your path:
+V01 > Option [A/B/C/D] > Why
+
+I’ll ship the highest-voted branch as V02.

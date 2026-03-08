@@ -1,0 +1,34 @@
+ALCHEMIST INTERACTIVE BRANCHING PLAN
+
+Core structure:
+- 1 kickstart/problem video (V01)
+- 4 main branch videos
+- each main branch expands into 4 sub videos
+
+Main branch videos after V01:
+- V02-A: Question Engine First
+- V03-B: Design Mode First
+- V04-C: Backend First
+- V05-D: Customer First
+
+Sub-video pattern for each main branch:
+1) Fast implementation
+2) Deep architecture
+3) Team/process version
+4) Recovery/failure-mode version
+
+Cohort repo frontmatter template:
+video_id: V01
+module_id: ALCHEMIST-M01
+level: kickstart (kickstart | main | sub)
+branch: root (A | B | C | D | root)
+duration_sec: 240
+cta: Comment A/B/C/D
+next_paths: V02-A, V03-B, V04-C, V05-D
+
+Review checklist:
+- Decision point explicit
+- Options mutually exclusive
+- Tradeoff clear
+- Next-path CTA included
+- Spoken cadence fits timing
