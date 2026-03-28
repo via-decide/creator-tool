@@ -265,6 +265,47 @@
   const $ = (id) => document.getElementById(id);
 
   const STORAGE_KEY = "decide_engine_course_builder_v1";
+  const IDB_MAX_AGE  = 24 * 60 * 60 * 1000; // 24 hours
+
+  // ── IndexedDB wrapper (replaces localStorage for draft storage) ──────────
+  const VD_IDB = (function(){
+    const DB = 'vd-creator-tool', STORE = 'drafts';
+    let _db = null;
+    function open(){
+      if(_db) return Promise.resolve(_db);
+      return new Promise((res,rej)=>{
+        const r = indexedDB.open(DB,1);
+        r.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+        r.onsuccess = e => { _db = e.target.result; res(_db); };
+        r.onerror   = e => rej(e.target.error);
+      });
+    }
+    function save(key, data){
+      return open().then(db => new Promise((res,rej)=>{
+        const tx = db.transaction(STORE,'readwrite');
+        tx.objectStore(STORE).put({data, ts: Date.now()}, key);
+        tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+      })).catch(()=>{ try{ localStorage.setItem(key,JSON.stringify(data)); }catch(_){} });
+    }
+    function load(key){
+      return open().then(db => new Promise((res,rej)=>{
+        const r = db.transaction(STORE,'readonly').objectStore(STORE).get(key);
+        r.onsuccess = e => res(e.target.result || null);
+        r.onerror   = e => rej(e.target.error);
+      })).catch(()=>{
+        const raw = localStorage.getItem(key);
+        return raw ? { data: JSON.parse(raw), ts: 0 } : null;
+      });
+    }
+    function remove(key){
+      return open().then(db => new Promise((res,rej)=>{
+        const tx = db.transaction(STORE,'readwrite');
+        tx.objectStore(STORE).delete(key);
+        tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+      })).catch(()=>{ localStorage.removeItem(key); });
+    }
+    return { save, load, remove };
+  })();
 
   // ── Pre-built course tracks ──────────────────────────────────────────────
   const COURSE_TRACKS = {
@@ -826,13 +867,18 @@ Subscribe if you want to think and operate more clearly.
         }
       }
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    VD_IDB.save(STORAGE_KEY, payload);
   }
 
   function load(){
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw){ setStatus("no saved data"); return; }
-    const data = JSON.parse(raw);
+    VD_IDB.load(STORAGE_KEY).then(record => {
+      if(!record){ setStatus("no saved data"); return; }
+      const data = record.data || record;
+      _applyLoaded(data, record.ts || 0);
+    });
+  }
+
+  function _applyLoaded(data, ts){
 
     $("courseName").value = data.courseName || "";
     $("moduleNo").value = data.moduleNo || "";
@@ -866,11 +912,26 @@ Subscribe if you want to think and operate more clearly.
     }
 
     setStatus("loaded " + (data.savedAt ? data.savedAt.slice(0,19).replace("T"," ") : ""));
+    // Show restore banner if draft is fresh (< 24h)
+    if(ts && (Date.now() - ts) < IDB_MAX_AGE && data.topic) {
+      _showRestoreBanner(data.savedAt);
+    }
+  }
+
+  function _showRestoreBanner(savedAt){
+    if(document.getElementById('vd-restore-banner')) return;
+    const b = document.createElement('div');
+    b.id = 'vd-restore-banner';
+    b.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;border:1px solid #ff671f;color:#e5e7eb;padding:10px 16px;border-radius:10px;font-size:.82rem;z-index:9999;display:flex;gap:10px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.5)';
+    b.innerHTML = '📂 Draft from ' + (savedAt ? savedAt.slice(0,16).replace('T',' ') : 'earlier') +
+      ' <button onclick="document.getElementById(\'vd-restore-banner\').remove()" style="padding:3px 10px;background:#1f2937;border:1px solid #374151;border-radius:6px;color:#94a3b8;cursor:pointer;font-size:.78rem">Dismiss</button>';
+    document.body.appendChild(b);
+    setTimeout(() => { if(b.parentNode) b.remove(); }, 6000);
   }
 
   function resetAll(){
     if(!confirm("Reset all fields and clear saved data?")) return;
-    localStorage.removeItem(STORAGE_KEY);
+    VD_IDB.remove(STORAGE_KEY);
     ["courseName","moduleNo","topic","audience","bullets","notebookPrompt"].forEach(id => $(id).value = "");
     ["problemScript","solutionScript","ytPost","visualGuide","abPosts"].forEach(id => $(id).textContent = "");
 
@@ -905,14 +966,16 @@ Subscribe if you want to think and operate more clearly.
   }
 
   function exportJSON(){
-    const raw = localStorage.getItem(STORAGE_KEY) || JSON.stringify({ note:"nothing saved yet" });
-    const blob = new Blob([raw], {type:"application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "decide_engine_generator_export.json";
-    a.click();
-    URL.revokeObjectURL(a.href);
-    setStatus("exported json");
+    VD_IDB.load(STORAGE_KEY).then(record => {
+      const raw = record ? JSON.stringify(record.data || record) : JSON.stringify({ note:"nothing saved yet" });
+      const blob = new Blob([raw], {type:"application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "decide_engine_generator_export.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setStatus("exported json");
+    });
   }
 
   function importJSON(file){
@@ -920,7 +983,7 @@ Subscribe if you want to think and operate more clearly.
     reader.onload = () => {
       try{
         const data = JSON.parse(reader.result);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        VD_IDB.save(STORAGE_KEY, data);
         load();
         setStatus("imported json");
       }catch(e){
