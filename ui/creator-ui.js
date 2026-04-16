@@ -2,18 +2,19 @@ import { getDailyIdea } from "../engine/idea-engine.js";
 import { generateScript } from "../engine/script-engine.js";
 import { recordingChecklist } from "../engine/recording-engine.js";
 
-document.getElementById("generateIdea").addEventListener("click", () => {
-  const idea = getDailyIdea();
-  document.getElementById("output").innerText = idea;
-});
+const output = document.getElementById("creatorOutput");
 
-document.getElementById("generateScript").addEventListener("click", () => {
+document.getElementById("btnIdea").onclick = () => {
+  const idea = getDailyIdea();
+  output.textContent = "Today's Idea:\n\n" + idea;
+};
+
+document.getElementById("btnScript").onclick = () => {
   const idea = getDailyIdea();
   const script = generateScript(idea);
+  output.textContent = "Script Structure:\n\n" + JSON.stringify(script, null, 2);
+};
 
-  document.getElementById("output").innerText = JSON.stringify(script, null, 2);
-});
-
-document.getElementById("recordingChecklist").addEventListener("click", () => {
-  document.getElementById("output").innerText = recordingChecklist.join("\n");
-});
+document.getElementById("btnChecklist").onclick = () => {
+  output.textContent = "Recording Checklist:\n\n" + recordingChecklist.join("\n");
+};
